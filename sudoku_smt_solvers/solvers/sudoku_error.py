@@ -1,5 +1,6 @@
 class SudokuError(Exception):
-    ''' An exception class for errors in the sudoku solver '''
+    """An exception class for errors in the sudoku solver"""
+
     def __init__(self, message):
         self.message = message
 

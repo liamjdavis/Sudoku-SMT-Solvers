@@ -1,8 +1,10 @@
+import signal
+from unittest.mock import MagicMock, patch
+
 import pytest
+
 from sudoku_smt_solvers.solvers.dpll_solver import DPLLSolver
 from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
-import signal
-from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture

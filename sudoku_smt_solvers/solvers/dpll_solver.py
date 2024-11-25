@@ -1,5 +1,6 @@
-from .sudoku_error import SudokuError
 import signal
+
+from .sudoku_error import SudokuError
 
 
 class DPLLSolver:

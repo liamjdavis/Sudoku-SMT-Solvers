@@ -1,3 +1,3 @@
-from .solvers import DPLLSolver, DPLLTSolver, Z3Solver, CVC5Solver
-from .benchmarks import SudokuGenerator, BenchmarkRunner
+from .benchmarks import BenchmarkRunner, SudokuGenerator
+from .solvers import CVC5Solver, DPLLSolver, DPLLTSolver, Z3Solver
 from .utils import Parser, Profiler
