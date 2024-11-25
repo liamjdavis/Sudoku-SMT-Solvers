@@ -1,0 +1,10 @@
+[run]
+# Define the source directory for measuring coverage
+source = sudoku_smt_solvers
+
+[report]
+# Fail if coverage is below 90%
+fail_under = 90
+
+# Display missing lines in the terminal output
+show_missing = True
