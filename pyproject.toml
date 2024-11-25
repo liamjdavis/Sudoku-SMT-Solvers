@@ -1,0 +1,5 @@
+[tool.pre-commit]
+config = ".pre-commit-config.yaml"
+
+[tool.black]
+line-length = 88
