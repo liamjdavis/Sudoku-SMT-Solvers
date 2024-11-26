@@ -1,2 +1,0 @@
-class DPLLTSolver:
-    pass
