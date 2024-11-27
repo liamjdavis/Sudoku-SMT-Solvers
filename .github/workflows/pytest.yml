@@ -26,4 +26,4 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest
+          pytest --cov=sudoku_smt_solvers --cov-report=term-missing

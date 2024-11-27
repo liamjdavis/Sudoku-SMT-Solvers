@@ -5,6 +5,9 @@ from .sudoku_error import SudokuError
 
 class DPLLSolver:
     def __init__(self, sudoku, timeout=120) -> None:
+        if timeout <= 0:
+            raise SudokuError("Timeout must be positive")
+
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
