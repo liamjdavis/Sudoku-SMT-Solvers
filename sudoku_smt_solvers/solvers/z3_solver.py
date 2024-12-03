@@ -59,8 +59,6 @@ class Z3Solver:
             raise SudokuError("Solver not initialized properly")
 
         try:
-            # Existing encoding logic remains the same
-            # Add error checking for solver operations
             for i in range(25):
                 for j in range(25):
                     try:
@@ -88,7 +86,6 @@ class Z3Solver:
                                     f"Failed to encode value constraint at ({i},{j}): {str(e)}"
                                 )
 
-            # Rest of the existing encode_rules implementation with similar error handling
         except SudokuError:
             raise
         except Exception as e:
@@ -175,7 +172,7 @@ class Z3Solver:
 
             try:
                 stats = self.solver.statistics()
-                # Handle statistics more gracefully
+
                 try:
                     self.propagated_clauses = stats.get("propagations", 0)
                 except (AttributeError, Exception):
