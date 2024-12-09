@@ -149,7 +149,7 @@ def test_encode_puzzle_failure(valid_partial_grid):
 def test_solve_timeout(valid_partial_grid):
     solver = CVC5Solver(valid_partial_grid, timeout=0.1)
     # Don't set _testing flag here since we want to test actual timeout
-    
+
     with pytest.raises(SudokuError, match=r"Solver timed out after 0.1 seconds"):
         solver.solve()
 
@@ -169,29 +169,29 @@ def test_solve_unknown(valid_partial_grid):
 def test_solve_invalid_solution(valid_partial_grid):
     solver = CVC5Solver(valid_partial_grid)
     solver._testing = True
-    
+
     # Create proper mock solver
     mock_solver = create_autospec(Solver)
     mock_solver.checkSat.return_value = Mock(isSat=lambda: True)
-    
+
     # Create a proper mock for getValue that returns a callable
     mock_model = Mock()
     mock_model.getBooleanValue = Mock(return_value=True)
     mock_getValue = Mock(return_value=mock_model)
     mock_solver.getValue = mock_getValue
-    
+
     # Set up the solver instance
     solver.solver = mock_solver
     solver.variables = [
         [[Mock() for _ in range(25)] for _ in range(25)] for _ in range(25)
     ]
-    
+
     # Mock extract_solution to return a dummy solution
     dummy_solution = [[1 for _ in range(25)] for _ in range(25)]
-    
-    with patch.object(solver, "_solve_task", return_value=mock_getValue), \
-         patch.object(solver, "extract_solution", return_value=dummy_solution), \
-         patch.object(solver, "_validate_solution", return_value=False):
+
+    with patch.object(solver, "_solve_task", return_value=mock_getValue), patch.object(
+        solver, "extract_solution", return_value=dummy_solution
+    ), patch.object(solver, "_validate_solution", return_value=False):
         with pytest.raises(SudokuError, match="Generated solution is invalid"):
             result = solver.solve()
             if result:  # Ensure we reach validation for test mode
@@ -225,7 +225,7 @@ def test_validate_solution_mismatch(valid_partial_grid):
 def test_solve_success(valid_partial_grid, solved_grid):
     solver = CVC5Solver(valid_partial_grid)
     solver._testing = True  # Add this line to enable test mode
-    
+
     mock_solver = create_autospec(Solver)
     mock_result = Mock()
     mock_result.isSat.return_value = True
@@ -233,7 +233,7 @@ def test_solve_success(valid_partial_grid, solved_grid):
     mock_solver.getValue = Mock()
     mock_solver.mkTerm.return_value = Mock()
     mock_solver.mkBoolean.return_value = Mock()
-    
+
     mock_stats = Mock()
     mock_stats.get = Mock(return_value=0)
     mock_solver.getStats = Mock(return_value=mock_stats)
@@ -395,11 +395,12 @@ def test_solve_create_variables_failure():
         with pytest.raises(SudokuError, match="Mock error"):
             solver.solve()
 
+
 def test_solve_getStatistic_error():
     solver = CVC5Solver([[0] * 25 for _ in range(25)])
     # Add this line to enable test mode
     solver._testing = True
-    
+
     mock_solver = create_autospec(Solver)
     mock_result = Mock()
     mock_result.isSat.return_value = True
@@ -420,6 +421,7 @@ def test_solve_getStatistic_error():
                     with patch.object(solver, "_validate_solution", return_value=True):
                         result = solver.solve()
                         assert solver.propagated_clauses == 0
+
 
 def test_init_empty_grid():
     with pytest.raises(

@@ -2,6 +2,7 @@ import multiprocessing
 from cvc5 import Kind, Solver
 from .sudoku_error import SudokuError
 
+
 class CVC5Solver:
     def __init__(self, sudoku, timeout=120) -> None:
         if timeout <= 0:
@@ -168,17 +169,17 @@ class CVC5Solver:
         self.create_variables()
         self.encode_rules()
         self.encode_puzzle()
-        
+
         result = self.solver.checkSat()
         if result.isSat():
             return self.solver.getValue
         return None
-    
+
     def solve(self):
         """Solve the Sudoku puzzle using CVC5."""
-        try:            
+        try:
             # Skip multiprocessing if in test mode
-            if hasattr(self, '_testing'):
+            if hasattr(self, "_testing"):
                 model = self._solve_task()
             else:
                 # Create a process pool with 1 worker
@@ -188,7 +189,9 @@ class CVC5Solver:
                         async_result = pool.apply_async(self._solve_task)
                         model = async_result.get(timeout=self.timeout)
                     except multiprocessing.TimeoutError:
-                        raise SudokuError(f"Solver timed out after {self.timeout} seconds")
+                        raise SudokuError(
+                            f"Solver timed out after {self.timeout} seconds"
+                        )
 
             if model:
                 solution = self.extract_solution(model)
@@ -201,7 +204,7 @@ class CVC5Solver:
                     raise SudokuError("Generated solution is invalid")
                 return solution
             return None
-                
+
         except SudokuError:
             raise
         except Exception as e:

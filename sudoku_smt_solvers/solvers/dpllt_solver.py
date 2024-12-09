@@ -67,7 +67,7 @@ class DPLLTSolver:
 
     def dpll_t(self) -> bool:
         """Main DPLL(T) algorithm"""
-        # Unit propagation 
+        # Unit propagation
         while unit := self.find_unit_clause():
             if not self.update_clauses(unit):
                 conflict_clause = [-unit]
@@ -233,21 +233,23 @@ class DPLLTSolver:
             for i in range(self.size):
                 for j in range(self.size):
                     if self.sudoku[i][j] != 0:
-                        if not self.update_clauses(get_var(i, j, self.sudoku[i][j], self.size)):
+                        if not self.update_clauses(
+                            get_var(i, j, self.sudoku[i][j], self.size)
+                        ):
                             return None
 
             if self.dpll_t():
                 return self.extract_solution()
             return None
-            
+
         except Exception as e:
             raise SudokuError(f"Error solving puzzle: {e}")
 
     def solve(self) -> Optional[List[List[int]]]:
         """Solve the Sudoku puzzle"""
         try:
-                    # Skip multiprocessing if in test mode
-            if hasattr(self, '_testing'):
+            # Skip multiprocessing if in test mode
+            if hasattr(self, "_testing"):
                 solution = self._solve_task()
                 return solution
 

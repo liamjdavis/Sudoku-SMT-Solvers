@@ -129,21 +129,21 @@ def test_encode_puzzle_failure(mock_add, valid_partial_grid):
 # Solving Tests
 def test_solve_timeout(valid_empty_grid):
     solver = Z3Solver(valid_empty_grid, timeout=1)
-    
+
     # Create mock for Pool.apply_async that raises TimeoutError
     mock_async_result = Mock()
     mock_async_result.get.side_effect = multiprocessing.TimeoutError()
-    
+
     mock_apply_async = Mock(return_value=mock_async_result)
     mock_pool = Mock()
     mock_pool.apply_async = mock_apply_async
-    
+
     # Mock Pool context manager
     mock_pool_instance = Mock(return_value=mock_pool)
     mock_pool_instance.__enter__ = Mock(return_value=mock_pool)
     mock_pool_instance.__exit__ = Mock(return_value=None)
-    
-    with patch('multiprocessing.Pool', return_value=mock_pool_instance):
+
+    with patch("multiprocessing.Pool", return_value=mock_pool_instance):
         with pytest.raises(SudokuError, match="Solver timed out"):
             solver.solve()
 
@@ -154,6 +154,7 @@ def test_solve_unsatisfiable(mock_check, valid_partial_grid):
     solver._testing = True  # Enable test mode
     result = solver.solve()
     assert result is None
+
 
 @patch.object(Solver, "check", return_value="unknown")
 def test_solve_unknown(mock_check, valid_partial_grid):
@@ -169,10 +170,10 @@ def test_solve_invalid_solution(mock_check, mock_model, valid_partial_grid):
     # Create solver instance and enable test mode
     solver = Z3Solver(valid_partial_grid)
     solver._testing = True  # Enable test mode to skip multiprocessing
-    
+
     # Mock solver behavior
     mock_model.return_value = Mock()
-    
+
     # Test invalid solution path
     with patch.object(solver, "extract_solution", return_value=None):
         with patch.object(solver, "_validate_solution", return_value=False):
@@ -223,7 +224,7 @@ def test_solve_success(mock_z3_solver, valid_partial_grid, solved_grid):
 
     solver = Z3Solver(valid_partial_grid)
     solver._testing = True  # Enable test mode
-    
+
     with patch.object(solver, "extract_solution", return_value=solved_grid):
         with patch.object(solver, "_validate_solution", return_value=True):
             result = solver.solve()

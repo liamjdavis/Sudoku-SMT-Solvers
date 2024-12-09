@@ -197,10 +197,10 @@ class Z3Solver:
         """Solve the Sudoku puzzle with multiprocessing-based timeout"""
         try:
             # Skip multiprocessing if in test mode
-            if hasattr(self, '_testing'):
+            if hasattr(self, "_testing"):
                 solution = self._solve_task()
                 return solution
-            
+
             # Create a process pool with 1 worker
             with multiprocessing.Pool(1) as pool:
                 try:
@@ -212,7 +212,7 @@ class Z3Solver:
 
                 except multiprocessing.TimeoutError:
                     raise SudokuError(f"Solver timed out after {self.timeout} seconds")
-                
+
         except SudokuError:
             raise
         except Exception as e:

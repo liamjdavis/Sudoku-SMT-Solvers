@@ -165,9 +165,9 @@ class DPLLSolver:
         """Solve the Sudoku puzzle"""
         try:
             # Skip multiprocessing if in test mode
-            if hasattr(self, '_testing'):
+            if hasattr(self, "_testing"):
                 return self._solve_task()
-            
+
             # Create a process pool with 1 worker
             with multiprocessing.Pool(1) as pool:
                 try:
@@ -179,7 +179,7 @@ class DPLLSolver:
 
                 except multiprocessing.TimeoutError:
                     raise SudokuError(f"Solver timed out after {self.timeout} seconds")
-                
+
         except SudokuError:
             raise
         except Exception as e:
