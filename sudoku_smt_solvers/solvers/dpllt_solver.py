@@ -1,4 +1,4 @@
-import signal
+import multiprocessing
 from typing import List, Dict, Set, Optional, Tuple
 from .sudoku_error import SudokuError
 from .utils import generate_cnf, get_var
@@ -67,7 +67,7 @@ class DPLLTSolver:
 
     def dpll_t(self) -> bool:
         """Main DPLL(T) algorithm"""
-        # Unit propagation
+        # Unit propagation 
         while unit := self.find_unit_clause():
             if not self.update_clauses(unit):
                 conflict_clause = [-unit]
@@ -85,8 +85,9 @@ class DPLLTSolver:
             learned, level = self.analyze_conflict(conflict)
             if not learned:
                 return False
-            self.learned_clauses.append(learned)
+            self.learned_clauses.append(learned)  # Add learned clause
             self.backtrack(level)
+            # Don't clear learned clauses during backtracking
             return self.dpll_t()
 
         # Pure literal elimination
@@ -225,33 +226,49 @@ class DPLLTSolver:
         self.propagated_clauses += 1
         return False
 
-    def solve(self) -> Optional[List[List[int]]]:
-        """Solve the Sudoku puzzle"""
+    def _solve_task(self) -> Optional[List[List[int]]]:
+        """Helper method to run in separate process"""
         try:
             # Initialize with given numbers
             for i in range(self.size):
                 for j in range(self.size):
                     if self.sudoku[i][j] != 0:
-                        if not self.update_clauses(get_var(i, j, self.sudoku[i][j])):
+                        if not self.update_clauses(get_var(i, j, self.sudoku[i][j], self.size)):
                             return None
 
-            signal.signal(signal.SIGALRM, self.timeout_handler)
-            signal.alarm(self.timeout)
-
-            try:
-                if self.dpll_t():
-                    return self.extract_solution()
-            finally:
-                signal.alarm(0)
-        except TimeoutError:
-            raise SudokuError(f"Solver timed out after {self.timeout} seconds")
+            if self.dpll_t():
+                return self.extract_solution()
+            return None
+            
         except Exception as e:
             raise SudokuError(f"Error solving puzzle: {e}")
 
-        return None
+    def solve(self) -> Optional[List[List[int]]]:
+        """Solve the Sudoku puzzle"""
+        try:
+                    # Skip multiprocessing if in test mode
+            if hasattr(self, '_testing'):
+                solution = self._solve_task()
+                return solution
 
-    def timeout_handler(self, signum, frame):
-        raise TimeoutError("DPLL(T) solver timed out")
+            # Create a process pool with 1 worker
+            with multiprocessing.Pool(1) as pool:
+                try:
+                    # Run solver in separate process with timeout
+                    async_result = pool.apply_async(self._solve_task)
+                    solution = async_result.get(timeout=self.timeout)
+
+                    return solution
+
+                except multiprocessing.TimeoutError:
+                    raise SudokuError(f"Solver timed out after {self.timeout} seconds")
+
+        except SudokuError:
+            raise
+        except Exception as e:
+            raise SudokuError(f"Critical solver error: {str(e)}")
+
+        return None
 
     def extract_solution(self) -> List[List[int]]:
         """Extract solution from assignments"""

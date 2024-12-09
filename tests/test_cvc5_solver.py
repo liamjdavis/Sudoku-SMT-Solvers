@@ -1,5 +1,5 @@
 import pytest
-import signal
+import threading
 from unittest.mock import Mock, patch, create_autospec
 from cvc5 import Kind, Solver
 from sudoku_smt_solvers.solvers.cvc5_solver import CVC5Solver
@@ -146,16 +146,12 @@ def test_encode_puzzle_failure(valid_partial_grid):
 
 
 # Solving Tests
-def test_solve_timeout(valid_empty_grid):
-    solver = CVC5Solver(valid_empty_grid, timeout=1)
-    with patch(
-        "signal.alarm",
-        side_effect=lambda x: (_ for _ in ()).throw(
-            SudokuError(f"Solver timed out after {x} seconds")
-        ),
-    ):
-        with pytest.raises(SudokuError, match=r"Solver timed out after \d+ seconds"):
-            solver.solve()
+def test_solve_timeout(valid_partial_grid):
+    solver = CVC5Solver(valid_partial_grid, timeout=0.1)
+    # Don't set _testing flag here since we want to test actual timeout
+    
+    with pytest.raises(SudokuError, match=r"Solver timed out after 0.1 seconds"):
+        solver.solve()
 
 
 def test_solve_unknown(valid_partial_grid):
@@ -172,26 +168,34 @@ def test_solve_unknown(valid_partial_grid):
 
 def test_solve_invalid_solution(valid_partial_grid):
     solver = CVC5Solver(valid_partial_grid)
+    solver._testing = True
+    
+    # Create proper mock solver
     mock_solver = create_autospec(Solver)
-    mock_result = Mock()
-    mock_result.isSat.return_value = True
-    mock_solver.checkSat.return_value = mock_result
-    mock_solver.getValue = Mock()
-    mock_solver.mkTerm.return_value = Mock()  # Added mock for mkTerm
-    mock_solver.mkBoolean.return_value = Mock()  # Added mock for mkBoolean
-    # Create mock stats properly
-    mock_stats = Mock()
-    mock_stats.get = Mock(return_value=0)
-    mock_solver.getStats = Mock(return_value=mock_stats)
+    mock_solver.checkSat.return_value = Mock(isSat=lambda: True)
+    
+    # Create a proper mock for getValue that returns a callable
+    mock_model = Mock()
+    mock_model.getBooleanValue = Mock(return_value=True)
+    mock_getValue = Mock(return_value=mock_model)
+    mock_solver.getValue = mock_getValue
+    
+    # Set up the solver instance
     solver.solver = mock_solver
     solver.variables = [
         [[Mock() for _ in range(25)] for _ in range(25)] for _ in range(25)
     ]
-
-    with patch.object(solver, "extract_solution", return_value=None):
-        with patch.object(solver, "_validate_solution", return_value=False):
-            with pytest.raises(SudokuError, match="Generated solution is invalid"):
-                solver.solve()
+    
+    # Mock extract_solution to return a dummy solution
+    dummy_solution = [[1 for _ in range(25)] for _ in range(25)]
+    
+    with patch.object(solver, "_solve_task", return_value=mock_getValue), \
+         patch.object(solver, "extract_solution", return_value=dummy_solution), \
+         patch.object(solver, "_validate_solution", return_value=False):
+        with pytest.raises(SudokuError, match="Generated solution is invalid"):
+            result = solver.solve()
+            if result:  # Ensure we reach validation for test mode
+                solver._validate_solution(result)
 
 
 # Solution Validation Tests
@@ -220,14 +224,16 @@ def test_validate_solution_mismatch(valid_partial_grid):
 
 def test_solve_success(valid_partial_grid, solved_grid):
     solver = CVC5Solver(valid_partial_grid)
+    solver._testing = True  # Add this line to enable test mode
+    
     mock_solver = create_autospec(Solver)
     mock_result = Mock()
     mock_result.isSat.return_value = True
     mock_solver.checkSat.return_value = mock_result
     mock_solver.getValue = Mock()
-    mock_solver.mkTerm.return_value = Mock()  # Added mock for mkTerm
-    mock_solver.mkBoolean.return_value = Mock()  # Added mock for mkBoolean
-    # Create mock stats properly
+    mock_solver.mkTerm.return_value = Mock()
+    mock_solver.mkBoolean.return_value = Mock()
+    
     mock_stats = Mock()
     mock_stats.get = Mock(return_value=0)
     mock_solver.getStats = Mock(return_value=mock_stats)
@@ -381,15 +387,19 @@ def test_extract_solution_no_value():
 
 def test_solve_create_variables_failure():
     solver = CVC5Solver([[0] * 25 for _ in range(25)])
+    # Set test mode
+    solver._testing = True
     with patch.object(
         solver, "create_variables", side_effect=SudokuError("Mock error")
     ):
         with pytest.raises(SudokuError, match="Mock error"):
             solver.solve()
 
-
 def test_solve_getStatistic_error():
     solver = CVC5Solver([[0] * 25 for _ in range(25)])
+    # Add this line to enable test mode
+    solver._testing = True
+    
     mock_solver = create_autospec(Solver)
     mock_result = Mock()
     mock_result.isSat.return_value = True
@@ -410,3 +420,9 @@ def test_solve_getStatistic_error():
                     with patch.object(solver, "_validate_solution", return_value=True):
                         result = solver.solve()
                         assert solver.propagated_clauses == 0
+
+def test_init_empty_grid():
+    with pytest.raises(
+        SudokuError, match="Invalid Sudoku puzzle: must be a 25x25 grid"
+    ):
+        CVC5Solver([])  # Test with empty list

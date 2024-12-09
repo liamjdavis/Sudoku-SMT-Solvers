@@ -1,4 +1,6 @@
 from typing import List
+import signal
+from contextlib import contextmanager
 
 
 def get_var(row: int, col: int, num: int, size: int) -> int:
