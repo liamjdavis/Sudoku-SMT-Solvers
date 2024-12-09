@@ -189,9 +189,11 @@ def test_solve_invalid_solution(valid_partial_grid):
     # Mock extract_solution to return a dummy solution
     dummy_solution = [[1 for _ in range(25)] for _ in range(25)]
 
-    with patch.object(solver, "_solve_task", return_value=mock_getValue), patch.object(
-        solver, "extract_solution", return_value=dummy_solution
-    ), patch.object(solver, "_validate_solution", return_value=False):
+    with (
+        patch.object(solver, "_solve_task", return_value=mock_getValue),
+        patch.object(solver, "extract_solution", return_value=dummy_solution),
+        patch.object(solver, "_validate_solution", return_value=False),
+    ):
         with pytest.raises(SudokuError, match="Generated solution is invalid"):
             result = solver.solve()
             if result:  # Ensure we reach validation for test mode
