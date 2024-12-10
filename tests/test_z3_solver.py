@@ -1,5 +1,5 @@
 import pytest
-import signal
+import multiprocessing
 from unittest.mock import Mock, patch
 from z3 import sat, unsat, Solver, Bool
 from sudoku_smt_solvers.solvers.z3_solver import Z3Solver
@@ -129,9 +129,21 @@ def test_encode_puzzle_failure(mock_add, valid_partial_grid):
 # Solving Tests
 def test_solve_timeout(valid_empty_grid):
     solver = Z3Solver(valid_empty_grid, timeout=1)
-    with patch(
-        "signal.alarm", side_effect=lambda x: solver._timeout_handler(None, None)
-    ):
+
+    # Create mock for Pool.apply_async that raises TimeoutError
+    mock_async_result = Mock()
+    mock_async_result.get.side_effect = multiprocessing.TimeoutError()
+
+    mock_apply_async = Mock(return_value=mock_async_result)
+    mock_pool = Mock()
+    mock_pool.apply_async = mock_apply_async
+
+    # Mock Pool context manager
+    mock_pool_instance = Mock(return_value=mock_pool)
+    mock_pool_instance.__enter__ = Mock(return_value=mock_pool)
+    mock_pool_instance.__exit__ = Mock(return_value=None)
+
+    with patch("multiprocessing.Pool", return_value=mock_pool_instance):
         with pytest.raises(SudokuError, match="Solver timed out"):
             solver.solve()
 
@@ -139,6 +151,7 @@ def test_solve_timeout(valid_empty_grid):
 @patch.object(Solver, "check", return_value=unsat)
 def test_solve_unsatisfiable(mock_check, valid_partial_grid):
     solver = Z3Solver(valid_partial_grid)
+    solver._testing = True  # Enable test mode
     result = solver.solve()
     assert result is None
 
@@ -146,6 +159,7 @@ def test_solve_unsatisfiable(mock_check, valid_partial_grid):
 @patch.object(Solver, "check", return_value="unknown")
 def test_solve_unknown(mock_check, valid_partial_grid):
     solver = Z3Solver(valid_partial_grid)
+    solver._testing = True  # Enable test mode
     result = solver.solve()
     assert result is None
 
@@ -153,16 +167,22 @@ def test_solve_unknown(mock_check, valid_partial_grid):
 @patch.object(Solver, "model")
 @patch.object(Solver, "check", return_value=sat)
 def test_solve_invalid_solution(mock_check, mock_model, valid_partial_grid):
-    mock_solver = Mock()
-    mock_solver.check.return_value = sat
-    mock_solver.statistics.return_value = Mock(get=lambda x, y: 0)
-    mock_solver.model.return_value = Mock()
-
+    # Create solver instance and enable test mode
     solver = Z3Solver(valid_partial_grid)
+    solver._testing = True  # Enable test mode to skip multiprocessing
+
+    # Mock solver behavior
+    mock_model.return_value = Mock()
+
+    # Test invalid solution path
     with patch.object(solver, "extract_solution", return_value=None):
         with patch.object(solver, "_validate_solution", return_value=False):
             with pytest.raises(SudokuError, match="Generated solution is invalid"):
                 solver.solve()
+
+    # Verify mocks were called
+    mock_check.assert_called_once()
+    mock_model.assert_called_once()
 
 
 # Solution Validation Tests
@@ -203,6 +223,8 @@ def test_solve_success(mock_z3_solver, valid_partial_grid, solved_grid):
     mock_z3_solver.return_value = mock_solver
 
     solver = Z3Solver(valid_partial_grid)
+    solver._testing = True  # Enable test mode
+
     with patch.object(solver, "extract_solution", return_value=solved_grid):
         with patch.object(solver, "_validate_solution", return_value=True):
             result = solver.solve()

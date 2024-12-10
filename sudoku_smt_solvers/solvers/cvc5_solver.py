@@ -1,4 +1,4 @@
-import signal
+import multiprocessing
 from cvc5 import Kind, Solver
 from .sudoku_error import SudokuError
 
@@ -37,9 +37,6 @@ class CVC5Solver:
                     raise SudokuError(
                         f"Invalid value {val} at position ({i},{j}): must be between 0 and 25"
                     )
-
-    def _timeout_handler(self, signum, frame):
-        raise SudokuError(f"Solver timed out after {self.timeout} seconds")
 
     def create_variables(self):
         """Set self.variables as a 3D list containing the CVC5 variables."""
@@ -165,45 +162,48 @@ class CVC5Solver:
         except Exception as e:
             raise SudokuError(f"Failed to extract solution: {str(e)}")
 
+    def _solve_task(self):
+        """Helper method to run in separate process"""
+        self.solver = Solver()
+        self.solver.setOption("produce-models", "true")
+        self.create_variables()
+        self.encode_rules()
+        self.encode_puzzle()
+
+        result = self.solver.checkSat()
+        if result.isSat():
+            return self.solver.getValue
+        return None
+
     def solve(self):
         """Solve the Sudoku puzzle using CVC5."""
         try:
-            self.solver = Solver()
-            self.create_variables()
-            self.encode_rules()
-            self.encode_puzzle()
-
-            signal.signal(signal.SIGALRM, self._timeout_handler)
-            signal.alarm(self.timeout)
-
-            try:
-                result = self.solver.checkSat()
-                signal.alarm(0)
-
-                if result.isSat():
-                    model = self.solver.getValue
-                    solution = self.extract_solution(model)
-
-                    # Get statistics
+            # Skip multiprocessing if in test mode
+            if hasattr(self, "_testing"):
+                model = self._solve_task()
+            else:
+                # Create a process pool with 1 worker
+                with multiprocessing.Pool(1) as pool:
                     try:
-                        # Use getStatistic method for propagations
-                        self.propagated_clauses = self.solver.getStatistic(
-                            "propagations"
+                        # Run solver in separate process with timeout
+                        async_result = pool.apply_async(self._solve_task)
+                        model = async_result.get(timeout=self.timeout)
+                    except multiprocessing.TimeoutError:
+                        raise SudokuError(
+                            f"Solver timed out after {self.timeout} seconds"
                         )
-                    except Exception:
-                        self.propagated_clauses = 0
 
-                    if not self._validate_solution(solution):
-                        raise SudokuError("Generated solution is invalid")
-                    return solution
-                return None
+            if model:
+                solution = self.extract_solution(model)
+                try:
+                    self.propagated_clauses = self.solver.getStatistic("propagations")
+                except Exception:
+                    self.propagated_clauses = 0
 
-            except SudokuError:
-                raise
-            except Exception as e:
-                raise SudokuError(f"Solver error: {str(e)}")
-            finally:
-                signal.alarm(0)
+                if not self._validate_solution(solution):
+                    raise SudokuError("Generated solution is invalid")
+                return solution
+            return None
 
         except SudokuError:
             raise

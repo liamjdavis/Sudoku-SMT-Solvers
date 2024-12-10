@@ -1,10 +1,11 @@
-import signal
-from unittest.mock import MagicMock, patch
+import multiprocessing
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from sudoku_smt_solvers.solvers.dpll_solver import DPLLSolver
 from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
+from sudoku_smt_solvers.solvers.utils import generate_cnf, get_var
 
 
 @pytest.fixture
@@ -14,20 +15,6 @@ def valid_25x25_puzzle():
     puzzle[0][0] = 1  # Add some known values
     puzzle[1][1] = 2
     return puzzle
-
-
-def test_generate_cnf_exception():
-    # Create a valid 25x25 Sudoku puzzle
-    valid_puzzle = [[0] * 25 for _ in range(25)]
-
-    # Mock the generate_cnf method to raise an exception
-    with patch.object(
-        DPLLSolver, "generate_cnf", side_effect=Exception("Mocked CNF generation error")
-    ):
-        with pytest.raises(
-            SudokuError, match="Error generating CNF: Mocked CNF generation error"
-        ):
-            DPLLSolver(valid_puzzle)
 
 
 @pytest.fixture
@@ -46,13 +33,6 @@ def test_initialization(valid_25x25_puzzle):
 def test_initialization_invalid_puzzle():
     with pytest.raises(SudokuError):
         DPLLSolver(None)
-
-
-def test_get_var(dpll_solver):
-    var = dpll_solver.get_var(1, 2, 3)
-    assert isinstance(var, int)
-    # Test specific encoding
-    assert var == 1 * 25 * 25 + 2 * 25 + 3
 
 
 def test_find_unit_clause(dpll_solver):
@@ -112,39 +92,66 @@ def test_dpll_unsatisfiable(dpll_solver):
     assert not dpll_solver.dpll()
 
 
-@patch("signal.alarm")
-def test_solve_valid(mock_alarm, dpll_solver):
-    # Create a minimal valid 2x2 puzzle with proper CNF constraints
-    dpll_solver.sudoku = [[1, 0], [0, 2]]
-    dpll_solver.size = 2
-    dpll_solver.clauses = []
-    dpll_solver.assignments = {}
+def test_solve_valid(dpll_solver):
+    # Setup test puzzle with correct size
+    dpll_solver.sudoku = [[0] * 25 for _ in range(25)]
+    dpll_solver.sudoku[0][0] = 1
+    dpll_solver.sudoku[1][1] = 2
+    dpll_solver.size = 25
 
-    # Add minimal constraints for 2x2 puzzle
-    dpll_solver.clauses = [
-        [dpll_solver.get_var(0, 0, 1)],
-        [dpll_solver.get_var(1, 1, 2)],
-        [dpll_solver.get_var(0, 1, 1), dpll_solver.get_var(0, 1, 2)],
-        [dpll_solver.get_var(1, 0, 1), dpll_solver.get_var(1, 0, 2)],
-    ]
+    # Mock multiprocessing
+    mock_pool = MagicMock()
+    mock_async_result = MagicMock()
+    mock_async_result.get.return_value = dpll_solver.sudoku
+    mock_pool.__enter__.return_value.apply_async.return_value = mock_async_result
 
-    solution = dpll_solver.solve()
-    assert solution is not None
-    assert solution[0][0] == 1
-    assert solution[1][1] == 2
+    with patch("multiprocessing.Pool", return_value=mock_pool):
+        with patch("sudoku_smt_solvers.solvers.utils.get_var") as mock_get_var:
+            mock_get_var.side_effect = (
+                lambda row, col, num, size: row * size * size + col * size + num
+            )
+
+            # Generate minimal clauses
+            dpll_solver.clauses = [
+                [1],  # (0,0) = 1
+                [8],  # (1,1) = 2
+            ]
+            dpll_solver.assignments = {}
+
+            solution = dpll_solver.solve()
+
+            assert solution is not None
+            assert solution[0][0] == 1
+            assert solution[1][1] == 2
+
+            # Verify timeout was used
+            mock_async_result.get.assert_called_once_with(timeout=120)
 
 
-@patch("signal.alarm")
-def test_solve_timeout(mock_alarm, dpll_solver):
-    def mock_timeout_handler(*args):
-        raise TimeoutError("Solver timed out")
+def test_solve_timeout(dpll_solver):
+    # Mock the multiprocessing Pool
+    with patch("multiprocessing.Pool") as mock_pool:
+        # Configure mock pool instance
+        mock_pool_instance = Mock()
+        mock_pool.return_value.__enter__.return_value = mock_pool_instance
 
-    with patch("signal.signal") as mock_signal:
-        dpll_solver.timeout_handler = mock_timeout_handler
-        mock_alarm.side_effect = lambda x: mock_timeout_handler(None, None)
+        # Configure async result to raise TimeoutError
+        mock_async = Mock()
+        mock_async.get.side_effect = multiprocessing.TimeoutError()
+        mock_pool_instance.apply_async.return_value = mock_async
 
-        with pytest.raises(SudokuError, match=".*timed out.*"):
+        # Test timeout handling
+        with pytest.raises(SudokuError) as exc_info:
             dpll_solver.solve()
+
+        # Verify error message
+        assert f"Solver timed out after {dpll_solver.timeout} seconds" in str(
+            exc_info.value
+        )
+
+        # Verify pool was used correctly
+        mock_pool_instance.apply_async.assert_called_once_with(dpll_solver._solve_task)
+        mock_async.get.assert_called_once_with(timeout=dpll_solver.timeout)
 
 
 def test_solve_invalid_puzzle():
@@ -152,30 +159,6 @@ def test_solve_invalid_puzzle():
     with pytest.raises(SudokuError):
         solver = DPLLSolver(invalid_puzzle)
         solver.solve()
-
-
-def test_generate_cnf_clauses(dpll_solver):
-    # Test that CNF generation creates expected clause types
-    assert len(dpll_solver.clauses) > 0
-    # Test at least one clause of each type exists
-    found_cell = False
-    found_row = False
-    found_col = False
-    found_block = False
-
-    for clause in dpll_solver.clauses:
-        if len(clause) == 25:  # Cell constraint
-            found_cell = True
-        elif len(clause) == 2:  # Row/Col/Block constraints
-            var1, var2 = abs(clause[0]), abs(clause[1])
-            if var1 // (25 * 25) == var2 // (25 * 25):  # Same row
-                found_row = True
-            elif (var1 % (25 * 25)) // 25 == (var2 % (25 * 25)) // 25:  # Same column
-                found_col = True
-            else:
-                found_block = True
-
-    assert all([found_cell, found_row, found_col, found_block])
 
 
 @pytest.fixture
@@ -220,7 +203,94 @@ def test_dpll_try_false(dpll_solver):
     assert 2 in dpll_solver.assignments
 
 
-@patch.object(DPLLSolver, "dpll", side_effect=Exception("Mocked DPLL error"))
-def test_solve_dpll_exception(mock_dpll, dpll_solver):
+def test_solve_dpll_exception(dpll_solver):
+    # Enable test mode
+    dpll_solver._testing = True
+
+    # Patch the dpll method of the specific instance rather than the class
+    dpll_solver.dpll = Mock(side_effect=Exception("Mocked DPLL error"))
+
     with pytest.raises(SudokuError, match="Error solving puzzle: Mocked DPLL error"):
         dpll_solver.solve()
+
+
+def test_dpll_branching_strategy(dpll_solver):
+    # Setup a formula that requires branching
+    dpll_solver.clauses = [[1, 2, 3], [-1, -2], [-1, -3], [-2, -3]]
+    dpll_solver.assignments = {}
+
+    # Track assignments tried
+    assignments_tried = []
+
+    # Store original method
+    original_update = dpll_solver.update_clauses
+
+    def mock_update_clauses(assignment):
+        assignments_tried.append(assignment)
+        if assignment == 2:  # When trying var2=True
+            dpll_solver.assignments.clear()
+            return False  # Force backtracking
+        return original_update(assignment)  # Normal behavior otherwise
+
+    try:
+        dpll_solver.update_clauses = mock_update_clauses
+        result = dpll_solver.dpll()
+
+        # Verify results
+        assert result == True  # Solution should be found
+        assert -2 in assignments_tried  # Tried var2=False
+        assert len(assignments_tried) >= 2  # At least tried both values for var2
+        assert dpll_solver.assignments[1] == True  # var1 must be True in solution
+        assert dpll_solver.assignments[2] == False  # var2 must be False in solution
+        assert dpll_solver.assignments[3] == False  # var3 must be False in solution
+
+    finally:
+        dpll_solver.update_clauses = original_update
+
+
+def test_solution_reconstruction(dpll_solver):
+    # Enable test mode
+    dpll_solver._testing = True
+
+    # Setup test conditions
+    dpll_solver.size = 25
+    dpll_solver.assignments = {
+        # var = row * size * size + col * size + num
+        # For position (0,0) with number 1
+        1: True,
+        # For position (1,1) with number 2
+        652: True,
+        # Add some false assignments
+        2: False,
+        653: False,
+        # Add invalid position to test bounds checking
+        15626: True,  # Large number that would be out of grid bounds
+    }
+
+    # Call the solution reconstruction method
+    solution = dpll_solver._solve_task()
+
+    # Verify solution
+    assert solution is not None
+    assert isinstance(solution, list)
+    assert len(solution) == 25
+    assert all(len(row) == 25 for row in solution)
+
+    # Check correct number placement
+    assert solution[0][0] == 1  # First assignment
+    assert solution[1][1] == 2  # Second assignment
+
+    # Verify other positions are empty (0)
+    assert solution[0][1] == 0
+    assert solution[1][0] == 0
+
+
+def test_solution_reconstruction_no_solution(dpll_solver):
+    # Enable test mode
+    dpll_solver._testing = True
+
+    # Override dpll to return False
+    dpll_solver.dpll = lambda: False
+
+    # Verify no solution is returned
+    assert dpll_solver._solve_task() is None

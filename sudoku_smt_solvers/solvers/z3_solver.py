@@ -1,4 +1,4 @@
-import signal
+import multiprocessing
 from z3 import Solver, Bool, And, Or, Not, Implies, sat, unsat
 from .sudoku_error import SudokuError
 
@@ -37,9 +37,6 @@ class Z3Solver:
                     raise SudokuError(
                         f"Invalid value {val} at position ({i},{j}): must be between 0 and 25"
                     )
-
-    def _timeout_handler(self, signum, frame):
-        raise SudokuError(f"Solver timed out after {self.timeout} seconds")
 
     def create_variables(self):
         """Set self.variables as a 3D list containing the Z3 variables."""
@@ -159,27 +156,22 @@ class Z3Solver:
         except Exception as e:
             raise SudokuError(f"Failed to extract solution: {str(e)}")
 
-    def solve(self):
-        """Solve the Sudoku puzzle with enhanced error handling."""
+    def _solve_task(self):
+        """Helper method to run in separate process"""
         try:
             self.solver = Solver()
             self.create_variables()
             self.encode_rules()
             self.encode_puzzle()
 
-            signal.signal(signal.SIGALRM, self._timeout_handler)
-            signal.alarm(self.timeout)
-
             try:
                 stats = self.solver.statistics()
-
                 try:
                     self.propagated_clauses = stats.get("propagations", 0)
                 except (AttributeError, Exception):
                     self.propagated_clauses = 0
 
                 result = self.solver.check()
-                signal.alarm(0)
 
                 if result == sat:
                     model = self.solver.model()
@@ -193,8 +185,33 @@ class Z3Solver:
                 raise
             except Exception as e:
                 raise SudokuError(f"Solver error: {str(e)}")
-            finally:
-                signal.alarm(0)
+
+        except SudokuError:
+            raise
+        except Exception as e:
+            raise SudokuError(f"Critical solver error: {str(e)}")
+
+        return None
+
+    def solve(self):
+        """Solve the Sudoku puzzle with multiprocessing-based timeout"""
+        try:
+            # Skip multiprocessing if in test mode
+            if hasattr(self, "_testing"):
+                solution = self._solve_task()
+                return solution
+
+            # Create a process pool with 1 worker
+            with multiprocessing.Pool(1) as pool:
+                try:
+                    # Run solver in separate process with timeout
+                    async_result = pool.apply_async(self._solve_task)
+                    solution = async_result.get(timeout=self.timeout)
+
+                    return solution
+
+                except multiprocessing.TimeoutError:
+                    raise SudokuError(f"Solver timed out after {self.timeout} seconds")
 
         except SudokuError:
             raise

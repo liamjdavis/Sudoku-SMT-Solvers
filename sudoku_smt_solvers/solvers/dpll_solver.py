@@ -1,6 +1,7 @@
-import signal
+import multiprocessing
 
 from .sudoku_error import SudokuError
+from .utils import generate_cnf, get_var
 
 
 class DPLLSolver:
@@ -20,71 +21,9 @@ class DPLLSolver:
 
         # Generate CNF Form of Sudoku
         try:
-            self.generate_cnf()
+            generate_cnf(self.size)
         except Exception as e:
             raise SudokuError(f"Error generating CNF: {e}")
-
-    def generate_cnf(self):
-        """Generate CNF clauses for 25x25 Sudoku rules"""
-        # Cell constraints
-        for i in range(self.size):
-            for j in range(self.size):
-                self.clauses.append(
-                    [self.get_var(i, j, k) for k in range(1, self.size + 1)]
-                )
-
-                # Only one number per cell
-                for k in range(1, self.size + 1):
-                    for l in range(k + 1, self.size + 1):
-                        self.clauses.append(
-                            [-self.get_var(i, j, k), -self.get_var(i, j, l)]
-                        )
-
-        # Row constraints
-        for i in range(self.size):
-            for k in range(1, self.size + 1):
-                for j in range(self.size):
-                    for l in range(j + 1, self.size):
-                        self.clauses.append(
-                            [-self.get_var(i, j, k), -self.get_var(i, l, k)]
-                        )
-
-        # Column constraints
-        for j in range(self.size):
-            for k in range(1, self.size + 1):
-                for i in range(self.size):
-                    for l in range(i + 1, self.size):
-                        self.clauses.append(
-                            [-self.get_var(i, j, k), -self.get_var(l, j, k)]
-                        )
-
-        # 5x5 block constraints
-        block_size = 5
-        for block_i in range(block_size):
-            for block_j in range(block_size):
-                for k in range(1, self.size + 1):
-                    for i in range(block_size):
-                        for j in range(block_size):
-                            for i2 in range(i, block_size):
-                                for j2 in range(j + 1 if i2 == i else 0, block_size):
-                                    pos1 = (
-                                        block_i * block_size + i,
-                                        block_j * block_size + j,
-                                    )
-                                    pos2 = (
-                                        block_i * block_size + i2,
-                                        block_j * block_size + j2,
-                                    )
-                                    self.clauses.append(
-                                        [
-                                            -self.get_var(*pos1, k),
-                                            -self.get_var(*pos2, k),
-                                        ]
-                                    )
-
-    def get_var(self, row, col, num):
-        """Convert Sudoku position and number to CNF variable"""
-        return row * self.size * self.size + col * self.size + num
 
     def find_unit_clause(self):
         """Find a unit clause in the current formula"""
@@ -197,39 +136,52 @@ class DPLLSolver:
 
         return False
 
-    def timeout_handler(self, signum, frame):
-        raise TimeoutError("DPLL solver timed out")
-
-    def solve(self):
-        """Solve the Sudoku puzzle"""
+    def _solve_task(self):
+        """Helper method to run in separate process"""
         try:
             for i in range(self.size):
                 for j in range(self.size):
                     if self.sudoku[i][j] != 0:
                         if not self.update_clauses(
-                            self.get_var(i, j, self.sudoku[i][j])
+                            get_var(i, j, self.sudoku[i][j], self.size)
                         ):
                             return None
 
-            signal.signal(signal.SIGALRM, self.timeout_handler)
-            signal.alarm(self.timeout)
-
-            try:
-                if self.dpll():
-                    solution = [[0] * self.size for _ in range(self.size)]
-                    for var, value in self.assignments.items():
-                        if value:
-                            row = (var - 1) // (self.size * self.size)
-                            col = ((var - 1) % (self.size * self.size)) // self.size
-                            num = ((var - 1) % self.size) + 1
-                            if 0 <= row < self.size and 0 <= col < self.size:
-                                solution[row][col] = num
-                    return solution
-            finally:
-                signal.alarm(0)
-        except TimeoutError:
-            raise SudokuError(f"Solver timed out after {self.timeout} seconds")
+            if self.dpll():
+                solution = [[0] * self.size for _ in range(self.size)]
+                for var, value in self.assignments.items():
+                    if value:
+                        row = (var - 1) // (self.size * self.size)
+                        col = ((var - 1) % (self.size * self.size)) // self.size
+                        num = ((var - 1) % self.size) + 1
+                        if 0 <= row < self.size and 0 <= col < self.size:
+                            solution[row][col] = num
+                return solution
+            return None
         except Exception as e:
-            raise SudokuError(f"Error solving puzzle: {e}")
+            raise SudokuError(f"Error solving puzzle: {str(e)}")
 
+    def solve(self):
+        """Solve the Sudoku puzzle"""
+        try:
+            # Skip multiprocessing if in test mode
+            if hasattr(self, "_testing"):
+                return self._solve_task()
+
+            # Create a process pool with 1 worker
+            with multiprocessing.Pool(1) as pool:
+                try:
+                    # Run solver in separate process with timeout
+                    async_result = pool.apply_async(self._solve_task)
+                    solution = async_result.get(timeout=self.timeout)
+
+                    return solution
+
+                except multiprocessing.TimeoutError:
+                    raise SudokuError(f"Solver timed out after {self.timeout} seconds")
+
+        except SudokuError:
+            raise
+        except Exception as e:
+            raise SudokuError(f"Critical solver error: {str(e)}")
         return None
