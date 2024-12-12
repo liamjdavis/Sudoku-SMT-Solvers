@@ -1,7 +1,6 @@
 import random
 import time
-import csv
-from dfs_solver import DFSSolver
+from .dfs_solver import DFSSolver
 from typing import List, Set, Tuple
 from multiprocessing import Process, Queue
 
@@ -149,16 +148,3 @@ def print_grid(grid: List[List[int]]):
                 print("|", end=" ")
             print(f"{num:2}", end=" ")
         print()
-
-
-def save_grid_to_file(grid: List[List[int]], filename: str):
-    with open(filename, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(grid)
-
-
-if __name__ == "__main__":
-    generator = LasVegasGenerator(timeout=300)
-    puzzle = generator.generate()
-    print("\nGenerated Puzzle:")
-    print_grid(puzzle)
