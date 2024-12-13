@@ -26,15 +26,14 @@ def mock_solver(mock_solver_response):
 
 @pytest.fixture
 def mock_solver_factory(mock_solver):
-    with patch(
-        "sudoku_smt_solvers.benchmarks.benchmark_runner.CVC5Solver"
-    ) as mock_cvc5, patch(
-        "sudoku_smt_solvers.benchmarks.benchmark_runner.DPLLSolver"
-    ) as mock_dpll, patch(
-        "sudoku_smt_solvers.benchmarks.benchmark_runner.DPLLTSolver"
-    ) as mock_dpllt, patch(
-        "sudoku_smt_solvers.benchmarks.benchmark_runner.Z3Solver"
-    ) as mock_z3:
+    with (
+        patch("sudoku_smt_solvers.benchmarks.benchmark_runner.CVC5Solver") as mock_cvc5,
+        patch("sudoku_smt_solvers.benchmarks.benchmark_runner.DPLLSolver") as mock_dpll,
+        patch(
+            "sudoku_smt_solvers.benchmarks.benchmark_runner.DPLLTSolver"
+        ) as mock_dpllt,
+        patch("sudoku_smt_solvers.benchmarks.benchmark_runner.Z3Solver") as mock_z3,
+    ):
         mock_cvc5.return_value = mock_solver
         mock_dpll.return_value = mock_solver
         mock_dpllt.return_value = mock_solver
