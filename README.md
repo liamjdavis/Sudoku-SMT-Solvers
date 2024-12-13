@@ -1,6 +1,6 @@
 # Sudoku-SMT-Solvers
 
-[![Pytest + CI/CD](https://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/Pytest-and-coverage.yml/badge.svg)](ttps://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/Pytest-and-coverage.yml)
+[![Pytest + CI/CD](https://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/pytest-and-coverage.yml/badge.svg)](ttps://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/pytest-and-coverage.yml)
 [![Coverage Status](https://coveralls.io/repos/github/liamjdavis/Sudoku-SMT-Solvers/badge.svg)](https://coveralls.io/github/liamjdavis/Sudoku-SMT-Solvers)
 
 ## About
