@@ -153,6 +153,7 @@ class DPLLSolver:
                 model = self.solver.get_model()
                 solution = self.extract_solution(model)
                 self.solve_time = time.time() - self.start_time
+
                 if self.validate_solution(solution):
                     return solution
                 else:
