@@ -1,4 +1,5 @@
 import multiprocessing
+import time
 
 from .sudoku_error import SudokuError
 from .utils import generate_cnf, get_var
@@ -18,6 +19,7 @@ class DPLLSolver:
         self.timeout = timeout
         self.clauses = []
         self.assignments = {}
+        self.solve_time = 0  # Add timing variable
 
         # Generate CNF Form of Sudoku
         try:
@@ -164,6 +166,8 @@ class DPLLSolver:
     def solve(self):
         """Solve the Sudoku puzzle"""
         try:
+            start_time = time.time()  # Start timing
+
             # Skip multiprocessing if in test mode
             if hasattr(self, "_testing"):
                 return self._solve_task()
@@ -174,10 +178,11 @@ class DPLLSolver:
                     # Run solver in separate process with timeout
                     async_result = pool.apply_async(self._solve_task)
                     solution = async_result.get(timeout=self.timeout)
-
+                    self.solve_time = time.time() - start_time  # Record solve time
                     return solution
 
                 except multiprocessing.TimeoutError:
+                    self.solve_time = self.timeout
                     raise SudokuError(f"Solver timed out after {self.timeout} seconds")
 
         except SudokuError:

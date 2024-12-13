@@ -1,5 +1,6 @@
 import multiprocessing
-from typing import List, Dict, Set, Optional, Tuple
+import time
+from typing import List, Optional, Tuple
 from .sudoku_error import SudokuError
 from .utils import generate_cnf, get_var
 
@@ -22,6 +23,7 @@ class DPLLTSolver:
         self.decision_level = 0
         self.variable_level = {}
         self.implication_graph = {}
+        self.solving_time = 0
 
         try:
             generate_cnf(self.size)
@@ -229,6 +231,7 @@ class DPLLTSolver:
     def _solve_task(self) -> Optional[List[List[int]]]:
         """Helper method to run in separate process"""
         try:
+            start_time = time.time()
             # Initialize with given numbers
             for i in range(self.size):
                 for j in range(self.size):
@@ -239,7 +242,9 @@ class DPLLTSolver:
                             return None
 
             if self.dpll_t():
+                self.solving_time = time.time() - start_time
                 return self.extract_solution()
+            self.solving_time = time.time() - start_time
             return None
 
         except Exception as e:

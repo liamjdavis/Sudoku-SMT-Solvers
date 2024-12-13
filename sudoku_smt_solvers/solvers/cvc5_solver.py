@@ -1,3 +1,4 @@
+import time
 import multiprocessing
 from cvc5 import Kind, Solver
 from .sudoku_error import SudokuError
@@ -17,6 +18,7 @@ class CVC5Solver:
         self.solver = None
         self.variables = None
         self.propagated_clauses = 0
+        self.solve_time = 0
 
     def _validate_input(self, sudoku):
         if not sudoku or not isinstance(sudoku, list):
@@ -177,6 +179,7 @@ class CVC5Solver:
 
     def solve(self):
         """Solve the Sudoku puzzle using CVC5."""
+        start_time = time.time()  # Start timing
         try:
             # Skip multiprocessing if in test mode
             if hasattr(self, "_testing"):
@@ -202,7 +205,13 @@ class CVC5Solver:
 
                 if not self._validate_solution(solution):
                     raise SudokuError("Generated solution is invalid")
+                self.solve_time = (
+                    time.time() - start_time
+                )  # Record successful solve time
                 return solution
+            self.solve_time = (
+                time.time() - start_time
+            )  # Record time when no solution found
             return None
 
         except SudokuError:

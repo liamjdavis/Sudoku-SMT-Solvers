@@ -1,4 +1,5 @@
 import multiprocessing
+import time
 from z3 import Solver, Bool, And, Or, Not, Implies, sat, unsat
 from .sudoku_error import SudokuError
 
@@ -17,6 +18,7 @@ class Z3Solver:
         self.solver = None
         self.variables = None
         self.propagated_clauses = 0
+        self.solve_time = 0
 
     def _validate_input(self, sudoku):
         if not sudoku or not isinstance(sudoku, list):
@@ -196,9 +198,11 @@ class Z3Solver:
     def solve(self):
         """Solve the Sudoku puzzle with multiprocessing-based timeout"""
         try:
+            start_time = time.time()  # Start timing
             # Skip multiprocessing if in test mode
             if hasattr(self, "_testing"):
                 solution = self._solve_task()
+                self.solve_time = time.time() - start_time
                 return solution
 
             # Create a process pool with 1 worker
@@ -207,10 +211,11 @@ class Z3Solver:
                     # Run solver in separate process with timeout
                     async_result = pool.apply_async(self._solve_task)
                     solution = async_result.get(timeout=self.timeout)
-
+                    self.solve_time = time.time() - start_time  # Record solve time
                     return solution
 
                 except multiprocessing.TimeoutError:
+                    self.solve_time = self.timeout
                     raise SudokuError(f"Solver timed out after {self.timeout} seconds")
 
         except SudokuError:
