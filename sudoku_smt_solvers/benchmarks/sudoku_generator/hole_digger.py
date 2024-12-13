@@ -142,13 +142,3 @@ class HoleDigger:
             cells_to_check.remove((row, col))
 
         return self.puzzle
-
-
-if __name__ == "__main__":
-    terminal_pattern = LasVegasGenerator(size=4, givens=2, timeout=None).generate()
-
-    difficulty = "Medium"
-    hole_digger = HoleDigger(terminal_pattern, difficulty)
-    result = hole_digger.dig_holes()
-    for row in result:
-        print(row)
