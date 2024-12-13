@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import multiprocessing
 from typing import Dict, List, Optional
 
 from ..solvers import CVC5Solver, DPLLSolver, DPLLTSolver, Z3Solver
@@ -11,9 +12,11 @@ class BenchmarkRunner:
         self,
         puzzles_dir: str = "benchmarks/puzzles",
         results_dir: str = "benchmarks/results",
+        timeout: int = 120,
     ):
         self.puzzles_dir = puzzles_dir
         self.results_dir = results_dir
+        self.timeout = timeout
         self.solvers = {
             "CVC5": CVC5Solver,
             "DPLL": DPLLSolver,
@@ -39,29 +42,47 @@ class BenchmarkRunner:
             print(f"Error loading puzzle {puzzle_id}: {e}")
             return None
 
-    def run_solver(self, solver_name: str, puzzle: List[List[int]]) -> Dict:
-        """Run a single solver on a puzzle and collect results."""
-        solver_class = self.solvers[solver_name]
+    def _solve_with_timeout(self, solver_class, puzzle, queue):
+        """Helper function to run in separate process"""
         solver = solver_class(puzzle)
+        result = solver.solve()
+        # Pack both the result and propagation count
+        queue.put((result, getattr(solver, "propagated_clauses", 0)))
 
+    def run_solver(self, solver_name: str, puzzle: List[List[int]]) -> Dict:
+        """Run a single solver on a puzzle and collect results with timeout."""
+        solver_class = self.solvers[solver_name]
+
+        # Create queue for getting results
+        ctx = multiprocessing.get_context("spawn")
+        queue = ctx.Queue()
+
+        # Create process for solving
+        process = ctx.Process(
+            target=self._solve_with_timeout, args=(solver_class, puzzle, queue)
+        )
+
+        start_time = time.time()
+        process.start()
+        process.join(timeout=self.timeout)
+
+        solve_time = time.time() - start_time
+
+        if process.is_alive():
+            process.terminate()
+            process.join()
+            return {"status": "timeout", "solve_time": self.timeout, "propagations": 0}
+
+        # Get result and propagation count from queue
         try:
-            solution = solver.solve()
-            solve_time = getattr(solver, "solve_time", getattr(solver, "timeout", 120))
-            is_sat = solution is not None
-            propagations = getattr(solver, "propagated_clauses", 0)
-
+            result, propagations = queue.get_nowait()
             return {
-                "status": "sat" if is_sat else "unsat",
+                "status": "sat" if result else "unsat",
                 "solve_time": solve_time,
                 "propagations": propagations,
             }
-        except Exception as e:
-            return {
-                "status": "error",
-                "solve_time": getattr(solver, "timeout", 120),
-                "error": str(e),
-                "propagations": 0,
-            }
+        except:
+            return {"status": "error", "solve_time": solve_time, "propagations": 0}
 
     def run_benchmarks(self) -> None:
         """Run all solvers on all puzzles and save results."""
