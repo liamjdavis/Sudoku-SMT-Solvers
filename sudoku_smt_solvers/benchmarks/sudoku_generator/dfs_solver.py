@@ -2,11 +2,12 @@ from math import sqrt
 
 
 class DFSSolver:
-    def __init__(self, size=25, find_all=True):
+    def __init__(self, size=25, solutions_limit=-1):
         """Initialize solver with configurable grid size"""
         self.size = size  # Total grid size (default 25x25)
         self.box_size = int(sqrt(size))  # Size of each sub-box (default 5x5)
-        self.find_all = find_all  # Whether to find all solutions or just one
+        self.solutions_limit = solutions_limit  # Number of solutions to find (-1 for all solutions, n>0 for n solutions)
+        self.solutions_found = 0
         self.rows = [set() for _ in range(self.size)]
         self.cols = [set() for _ in range(self.size)]
         self.boxes = [set() for _ in range(self.size)]
@@ -40,13 +41,19 @@ class DFSSolver:
     def solve(self, grid):
         """Main solving function using backtracking"""
         self.setup_board(grid)
+        self.solutions_found = 0
         solutions = []
 
         def search():
             """Depth-first search implementation"""
             if not self.unfilled_positions:  # Found a solution
                 solutions.append([row[:] for row in grid])
-                return not self.find_all  # Stop if find_all=False
+                self.solutions_found += 1
+                # Stop if we've found desired number of solutions
+                return (
+                    self.solutions_limit > 0
+                    and self.solutions_found >= self.solutions_limit
+                )
 
             # Select cell with minimum valid numbers to reduce branching
             min_candidates = float("inf")
@@ -85,4 +92,8 @@ class DFSSolver:
             return False
 
         search()
-        return solutions if self.find_all else (solutions[0] if solutions else [])
+        return (
+            solutions
+            if self.solutions_limit != 1
+            else (solutions[0] if solutions else [])
+        )

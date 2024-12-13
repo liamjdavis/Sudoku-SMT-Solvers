@@ -23,7 +23,7 @@ class LasVegasGenerator:
         self.rows = [set() for _ in range(self.size)]
         self.cols = [set() for _ in range(self.size)]
         self.boxes = [set() for _ in range(self.size)]
-        self.solver = DFSSolver(size, find_all=False)
+        self.solver = DFSSolver(size, solutions_limit=1)
 
         box_size = int(self.size**0.5)
         self.box_lookup = [[0] * size for _ in range(size)]
