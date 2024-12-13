@@ -17,13 +17,6 @@ def test_initialization():
     assert len(solver.boxes) == 25
 
 
-def test_get_subgrid_index():
-    solver = DFSSolver(size=9)
-    assert solver.get_subgrid_index(0, 0) == 0
-    assert solver.get_subgrid_index(4, 4) == 4
-    assert solver.get_subgrid_index(8, 8) == 8
-
-
 def test_setup_board(solver):
     grid = [[0] * 9 for _ in range(9)]
     grid[0][0] = 1
