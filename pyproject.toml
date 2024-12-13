@@ -3,7 +3,7 @@ requires = ["setuptools>=75.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sudoku_smt_solvers"
+name = "sudoku-smt-solvers"
 version = "0.0.0"
 description = "A collection of SAT and SMT Solvers for Sudoku"
 readme = "README.md"

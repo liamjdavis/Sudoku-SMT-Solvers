@@ -1,24 +1,12 @@
 from setuptools import setup, find_packages
 
 
-def parse_requirements(filename):
-    with open(filename, "r") as file:
-        lines = file.readlines()
-
-        requirements = [
-            line.strip()
-            for line in lines
-            if line.strip() and not line.startswith(("#", "-e"))
-        ]
-    return requirements
-
-
 setup(
     name="sudoku_smt_solvers",
-    version="0.0.2",
+    version="0.0.0",
     author="Liam Davis",
     author_email="ljdavis27@amherst.edu",
-    description="A package for portfolio optimization using convex optimization",
+    description="A collection of SAT and SMT solvers for solving Sudoku puzzles",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/liamjdavis/Sudoku-SMT-Solvers/",
@@ -29,5 +17,30 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.9",
-    install_requires=parse_requirements("./requirements.txt"),
+    install_requires=[
+        "cfgv==3.4.0",
+        "coverage==7.6.8",
+        "cvc5==1.2.0",
+        "distlib==0.3.9",
+        "execnet==2.1.1",
+        "filelock==3.16.1",
+        "identify==2.6.2",
+        "iniconfig==2.0.0",
+        "mypy==1.13.0",
+        "mypy-extensions==1.0.0",
+        "nodeenv==1.9.1",
+        "packaging==24.2",
+        "platformdirs==4.3.6",
+        "pluggy==1.5.0",
+        "pre_commit==4.0.1",
+        "pytest==8.3.3",
+        "pytest-cov==6.0.0",
+        "PyYAML==6.0.2",
+        "setuptools==75.6.0",
+        "typing_extensions==4.12.2",
+        "virtualenv==20.27.1",
+        "z3-solver==4.13.3.0",
+        "python-sat==1.8.dev13",
+        "coveralls==4.0.1",
+    ],
 )
