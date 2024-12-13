@@ -81,17 +81,20 @@ class BenchmarkRunner:
         }
 
         puzzle_files = [f for f in os.listdir(self.puzzles_dir) if f.endswith(".json")]
+        print(f"Found {len(puzzle_files)} puzzle files")  # Debug
 
         for puzzle_file in puzzle_files:
             puzzle_id = puzzle_file[:-5]
             puzzle = self.load_puzzle(puzzle_id)
 
             if not puzzle:
+                print(f"Failed to load puzzle: {puzzle_id}")  # Debug
                 continue
 
             for solver_name in self.solvers:
                 print(f"Running {solver_name} on puzzle {puzzle_id}")
                 result = self.run_solver(solver_name, puzzle)
+                print(f"Result: {result}")  # Debug
 
                 results[solver_name]["puzzles"][puzzle_id] = result
 
@@ -103,34 +106,35 @@ class BenchmarkRunner:
                 stats["total_propagations"] += result["propagations"]
 
         # Calculate averages
-        for solver_stats in results.values():
+        for solver_name, solver_stats in results.items():
             stats = solver_stats["stats"]
             total_puzzles = stats["total_puzzles"]
             if total_puzzles > 0:
                 stats["avg_time"] = stats["total_time"] / total_puzzles
                 stats["avg_propagations"] = stats["total_propagations"] / total_puzzles
+            print(f"Stats for {solver_name}: {stats}")  # Debug
 
         # Save results
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         result_path = os.path.join(self.results_dir, f"benchmark_{timestamp}.json")
-        with open(result_path, "w") as f:
-            json.dump(results, f, indent=2)
 
-        # Save CSV format
+        # Debug CSV data
         csv_data = []
         for solver_name, solver_results in results.items():
             for puzzle_id, puzzle_result in solver_results["puzzles"].items():
-                csv_data.append(
-                    {
-                        "solver": solver_name,
-                        "puzzle_id": puzzle_id,
-                        "status": puzzle_result["status"],
-                        "solve_time": puzzle_result["solve_time"],
-                        "propagations": puzzle_result["propagations"],
-                    }
-                )
+                row = {
+                    "solver": solver_name,
+                    "puzzle_id": puzzle_id,
+                    "status": puzzle_result["status"],
+                    "solve_time": puzzle_result["solve_time"],
+                    "propagations": puzzle_result["propagations"],
+                }
+                csv_data.append(row)
+                print(f"Adding CSV row: {row}")  # Debug
 
         csv_path = os.path.join(self.results_dir, f"benchmark_{timestamp}.csv")
+        print(f"Writing {len(csv_data)} rows to CSV")  # Debug
+
         with open(csv_path, "w") as f:
             if csv_data:
                 headers = csv_data[0].keys()

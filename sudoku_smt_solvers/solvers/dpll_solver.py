@@ -19,6 +19,11 @@ class DPLLSolver:
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
         self.solve_time = 0
         self.start_time = None  # Timeout tracking
+        self.propagated_clauses = 0  # Add clause counter
+
+    def _count_clause(self) -> None:
+        """Increment propagated clauses counter when adding a clause"""
+        self.propagated_clauses += 1
 
     def add_sudoku_clauses(self) -> None:
         """Add Sudoku constraints as CNF clauses."""
@@ -33,6 +38,7 @@ class DPLLSolver:
         for row in range(size):
             for col in range(size):
                 self.cnf.append([get_var(row, col, num) for num in range(1, size + 1)])
+                self._count_clause()
 
                 # At most one number in each cell
                 for num1 in range(1, size + 1):
@@ -40,16 +46,19 @@ class DPLLSolver:
                         self.cnf.append(
                             [-get_var(row, col, num1), -get_var(row, col, num2)]
                         )
+                        self._count_clause()
 
         # Add row constraints
         for row in range(size):
             for num in range(1, size + 1):
                 self.cnf.append([get_var(row, col, num) for col in range(size)])
+                self._count_clause()
 
         # Add column constraints
         for col in range(size):
             for num in range(1, size + 1):
                 self.cnf.append([get_var(row, col, num) for row in range(size)])
+                self._count_clause()
 
         # Add block constraints
         for block_row in range(block_size):
@@ -66,6 +75,7 @@ class DPLLSolver:
                             for j in range(block_size)
                         ]
                     )
+                    self._count_clause()
 
         # Add initial assignments from the puzzle
         for row in range(size):
@@ -73,6 +83,7 @@ class DPLLSolver:
                 if self.sudoku[row][col] != 0:
                     num = self.sudoku[row][col]
                     self.cnf.append([get_var(row, col, num)])
+                    self._count_clause()
 
     def extract_solution(self, model: List[int]) -> List[List[int]]:
         """Convert SAT model to Sudoku grid."""
@@ -122,19 +133,36 @@ class DPLLSolver:
         """Solve the Sudoku puzzle using DPLL."""
         self.start_time = time.time()
         self.add_sudoku_clauses()
+
+        # Calculate remaining time for solver
+        elapsed = time.time() - self.start_time
+        remaining_time = max(1, int(self.timeout - elapsed))
+
+        # Configure SAT solver timeout using conf_budget
+        self.solver.conf_budget(remaining_time * 1000)  # Convert to milliseconds
         self.solver.append_formula(self.cnf.clauses)
 
-        # Solve the CNF formula directly using the SAT solver
-        if self.solver.solve():
-            # Extract and validate the solution
-            model = self.solver.get_model()
-            solution = self.extract_solution(model)
-            self.solve_time = time.time() - self.start_time
-            if self.validate_solution(solution):
-                return solution
+        # Check Python-level timeout
+        if time.time() - self.start_time > self.timeout:
+            self.solve_time = self.timeout
+            raise SudokuError(f"Solving timed out after {self.timeout} seconds")
+
+        try:
+            if self.solver.solve():
+                # Extract and validate the solution
+                model = self.solver.get_model()
+                solution = self.extract_solution(model)
+                self.solve_time = time.time() - self.start_time
+                if self.validate_solution(solution):
+                    return solution
+                else:
+                    raise SudokuError("Invalid solution generated.")
             else:
-                raise SudokuError("Invalid solution generated.")
-        else:
-            self.solve_time = time.time() - self.start_time
-            # If UNSAT, return None
-            return None
+                self.solve_time = time.time() - self.start_time
+                # If unsat, return None
+                return None
+
+        except Exception as e:
+            if "timeout" in str(e).lower() or "resource limit" in str(e).lower():
+                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
+            raise

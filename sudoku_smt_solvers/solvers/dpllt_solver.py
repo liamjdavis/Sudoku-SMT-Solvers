@@ -18,9 +18,14 @@ class DPLLTSolver:
         self.cnf = CNF()  # CNF object to store Boolean clauses
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
         self.theory_state = {}  # Store theory constraints dynamically
-        self.decision_level = 0  # SAT decision level
+        self.decision_level = 0
+        self.propagated_clauses = 0
         self.solve_time = 0
         self.start_time = None  # Timeout tracking
+
+    def _count_clause(self) -> None:
+        """Increment propagated clauses counter when adding a clause"""
+        self.propagated_clauses += 1
 
     def add_sudoku_clauses(self) -> None:
         """Add Sudoku constraints as CNF clauses."""
@@ -35,6 +40,7 @@ class DPLLTSolver:
         for row in range(size):
             for col in range(size):
                 self.cnf.append([get_var(row, col, num) for num in range(1, size + 1)])
+                self._count_clause()
 
                 # At most one number in each cell
                 for num1 in range(1, size + 1):
@@ -42,16 +48,19 @@ class DPLLTSolver:
                         self.cnf.append(
                             [-get_var(row, col, num1), -get_var(row, col, num2)]
                         )
+                        self._count_clause()
 
         # Add row constraints
         for row in range(size):
             for num in range(1, size + 1):
                 self.cnf.append([get_var(row, col, num) for col in range(size)])
+                self._count_clause()
 
         # Add column constraints
         for col in range(size):
             for num in range(1, size + 1):
                 self.cnf.append([get_var(row, col, num) for row in range(size)])
+                self._count_clause()
 
         # Add block constraints
         for block_row in range(block_size):
@@ -68,6 +77,7 @@ class DPLLTSolver:
                             for j in range(block_size)
                         ]
                     )
+                    self._count_clause()
 
         # Add initial assignments from the puzzle
         for row in range(size):
@@ -75,6 +85,7 @@ class DPLLTSolver:
                 if self.sudoku[row][col] != 0:
                     num = self.sudoku[row][col]
                     self.cnf.append([get_var(row, col, num)])
+                    self._count_clause()
 
     def theory_propagation(self) -> Optional[List[int]]:
         """
@@ -159,12 +170,18 @@ class DPLLTSolver:
         self.add_sudoku_clauses()
         self.solver.append_formula(self.cnf.clauses)
 
-        while self.solver.solve():  # Solve until the solver reports UNSAT
+        while self.solver.solve():
+            # Check timeout
+            if time.time() - self.start_time > self.timeout:
+                self.solve_time = self.timeout
+                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
+
             # Perform theory propagation
             conflict_clause = self.theory_propagation()
             if conflict_clause:
                 # Add conflict clause and continue solving
                 self.solver.add_clause(conflict_clause)
+                self._count_clause()
             else:
                 # Extract and validate the solution
                 model = self.solver.get_model()
