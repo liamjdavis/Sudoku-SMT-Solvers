@@ -1,3 +1,30 @@
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sudoku_smt_solvers"
+version = "0.0.0"
+description = "A collection of SAT and SMT Solvers for Sudoku"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Liam Davis", email = "ljdavis27@amherst.edu" },
+    { name = "Ryan Ji", email = "tji26@amherst.edu" }
+]
+keywords = ["Sudoku", "SAT Solvers", "SMT Solvers"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/liamjdavis/Sudoku-SMT-Solvers"
+
 [tool.pre-commit]
 config = ".pre-commit-config.yaml"
 
