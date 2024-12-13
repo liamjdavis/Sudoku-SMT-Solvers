@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 from datetime import datetime
 from typing import List, Tuple
 
@@ -52,7 +53,7 @@ class SudokuGenerator:
         solution = generator.generate()
 
         # Step 2: Create holes using HoleDigger
-        digger = HoleDigger(solution, self.difficulty)
+        digger = HoleDigger(copy.deepcopy(solution), self.difficulty)
         puzzle = digger.dig_holes()
 
         # Generate unique identifier for this puzzle
@@ -91,3 +92,18 @@ class SudokuGenerator:
 
         with open(filepath, "w") as f:
             json.dump(metadata, f, indent=2)
+
+
+if __name__ == "__main__":
+    generator = SudokuGenerator(
+        difficulty="Evil", puzzles_dir="puzzles", solutions_dir="solutions"
+    )
+    puzzle, solution, puzzle_id = generator.generate()
+
+    print(f"Generated puzzle {puzzle_id}")
+    print("Puzzle:")
+    for row in puzzle:
+        print(row)
+    print("\nSolution:")
+    for row in solution:
+        print(row)

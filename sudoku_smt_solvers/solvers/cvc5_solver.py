@@ -130,17 +130,6 @@ class CVC5Solver:
                 ).getIntegerValue()
         return solution
 
-    def _solve_task(self):
-        """Helper method to encode and solve the puzzle."""
-        self.create_variables()
-        self.encode_rules()
-        self.encode_puzzle()
-
-        result = self.solver.checkSat()
-        if result.isSat():
-            return self.extract_solution()
-        return None
-
     def cleanup(self):
         """Clean up solver resources."""
         if self.solver:
