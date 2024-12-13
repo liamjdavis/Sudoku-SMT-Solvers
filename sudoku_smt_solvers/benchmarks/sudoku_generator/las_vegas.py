@@ -148,3 +148,10 @@ def print_grid(grid: List[List[int]]):
                 print("|", end=" ")
             print(f"{num:2}", end=" ")
         print()
+
+
+if __name__ == "__main__":
+    generator = LasVegasGenerator()
+    solution = generator.generate()
+    print(solution)
+    print_grid(solution)
