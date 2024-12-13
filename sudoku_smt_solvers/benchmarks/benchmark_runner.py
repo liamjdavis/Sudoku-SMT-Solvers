@@ -137,7 +137,6 @@ class BenchmarkRunner:
 
         # Save results
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        result_path = os.path.join(self.results_dir, f"benchmark_{timestamp}.json")
 
         # Debug CSV data
         csv_data = []
@@ -163,4 +162,4 @@ class BenchmarkRunner:
                 for row in csv_data:
                     f.write(",".join(str(row[h]) for h in headers) + "\n")
 
-        print(f"Benchmark results saved to {result_path} and {csv_path}")
+        print(f"Benchmark results saved to {csv_path}")

@@ -1,195 +1,152 @@
 import os
 import json
 import pytest
+from unittest.mock import Mock, patch, MagicMock, mock_open
+
 from sudoku_smt_solvers.benchmarks.benchmark_runner import BenchmarkRunner
-from unittest.mock import Mock, patch
 
 
 @pytest.fixture
-def mock_create_solver(mock_solver):
-    with patch("sudoku_smt_solvers.benchmarks.benchmark_runner.create_solver") as mock:
-        mock.return_value = mock_solver
-        yield mock
+def valid_puzzle():
+    puzzle_path = "tests/data/valid_partial_grid_puzzle.json"
+    with open(puzzle_path) as f:
+        return json.load(f)
 
 
 @pytest.fixture
-def mock_solver_response():
-    return {"status": "sat", "solve_time": 0.1, "is_correct": True, "propagations": 100}
-
-
-@pytest.fixture
-def mock_solver(mock_solver_response):
-    solver = Mock()
-    solver.solve.return_value = mock_solver_response
-    return solver
-
-
-@pytest.fixture
-def mock_solver_factory(mock_solver):
-    with (
-        patch("sudoku_smt_solvers.benchmarks.benchmark_runner.CVC5Solver") as mock_cvc5,
-        patch("sudoku_smt_solvers.benchmarks.benchmark_runner.DPLLSolver") as mock_dpll,
-        patch(
-            "sudoku_smt_solvers.benchmarks.benchmark_runner.DPLLTSolver"
-        ) as mock_dpllt,
-        patch("sudoku_smt_solvers.benchmarks.benchmark_runner.Z3Solver") as mock_z3,
-    ):
-        mock_cvc5.return_value = mock_solver
-        mock_dpll.return_value = mock_solver
-        mock_dpllt.return_value = mock_solver
-        mock_z3.return_value = mock_solver
-
-        yield {
-            "CVC5": mock_cvc5,
-            "DPLL": mock_dpll,
-            "DPLL(T)": mock_dpllt,
-            "Z3": mock_z3,
-        }
+def valid_solution():
+    solution_path = "tests/data/valid_partial_grid_solution.json"
+    with open(solution_path) as f:
+        return json.load(f)
 
 
 @pytest.fixture
 def benchmark_runner(tmp_path):
-    # Create temporary directories for tests
     puzzles_dir = tmp_path / "puzzles"
-    solutions_dir = tmp_path / "solutions"
     results_dir = tmp_path / "results"
-
     puzzles_dir.mkdir()
-    solutions_dir.mkdir()
 
     return BenchmarkRunner(
-        puzzles_dir=str(puzzles_dir),
-        solutions_dir=str(solutions_dir),
-        results_dir=str(results_dir),
+        puzzles_dir=str(puzzles_dir), results_dir=str(results_dir), timeout=30
     )
 
 
-@pytest.fixture
-def sample_puzzle():
-    # Create a 25x25 grid with some initial values
-    grid = [[0] * 25 for _ in range(25)]
-    # Add some sample values
-    grid[0][0] = 1
-    grid[0][1] = 2
-    return grid
-
-
-@pytest.fixture
-def sample_solution():
-    # Create a 25x25 grid solution
-    grid = [[((i + j) % 25) + 1 for j in range(25)] for i in range(25)]
-    return grid
-
-
-def test_init(benchmark_runner):
-    assert os.path.exists(benchmark_runner.results_dir)
-    assert "CVC5" in benchmark_runner.solvers
-    assert "DPLL" in benchmark_runner.solvers
-    assert "DPLL(T)" in benchmark_runner.solvers
-    assert "Z3" in benchmark_runner.solvers
-
-
-def test_load_puzzle(benchmark_runner, sample_puzzle):
-    # Create a test puzzle file
+def test_load_puzzle(benchmark_runner, valid_puzzle):
     puzzle_path = os.path.join(benchmark_runner.puzzles_dir, "test.json")
     with open(puzzle_path, "w") as f:
-        json.dump({"puzzle": sample_puzzle}, f)
+        json.dump({"puzzle": valid_puzzle}, f)
 
     loaded_puzzle = benchmark_runner.load_puzzle("test")
-    assert loaded_puzzle == sample_puzzle
+    assert loaded_puzzle == valid_puzzle
 
 
-def test_load_puzzle_error(benchmark_runner):
-    assert benchmark_runner.load_puzzle("nonexistent") is None
-
-
-def test_load_solution(benchmark_runner, sample_solution):
-    # Create a test solution file
-    solution_path = os.path.join(benchmark_runner.solutions_dir, "test.json")
-    with open(solution_path, "w") as f:
-        json.dump({"solution": sample_solution}, f)
-
-    loaded_solution = benchmark_runner.load_solution("test")
-    assert loaded_solution == sample_solution
-
-
-def test_load_solution_error(benchmark_runner):
-    assert benchmark_runner.load_solution("nonexistent") is None
-
-
-def test_validate_solution(benchmark_runner, sample_solution):
-    assert benchmark_runner.validate_solution(sample_solution, sample_solution) is True
-    assert benchmark_runner.validate_solution(None, sample_solution) is False
-    assert benchmark_runner.validate_solution(sample_solution, None) is False
-
-
-def test_run_solver(
-    benchmark_runner, sample_puzzle, sample_solution, mock_solver, mock_solver_response
-):
-    # Set up the mock solver with required attributes
-    mock_solver.solve.return_value = sample_solution  # Return the actual solution
-    mock_solver.solve_time = 0.1
-    mock_solver.propagated_clauses = 100
-
-    # Patch the Z3Solver class in the benchmark_runner's solvers dict
-    benchmark_runner.solvers["Z3"] = lambda x: mock_solver
-
-    result = benchmark_runner.run_solver("Z3", sample_puzzle, sample_solution)
-
-    assert result == {
-        "status": "sat",
-        "solve_time": 0.1,
-        "is_correct": True,
-        "propagations": 100,
-    }
-    mock_solver.solve.assert_called_once()
-
-
-def test_run_solver_error(benchmark_runner, sample_puzzle, sample_solution):
-    # Test with invalid solver name
-    with pytest.raises(KeyError):
-        benchmark_runner.run_solver("InvalidSolver", sample_puzzle, sample_solution)
-
-
-def test_run_benchmarks(
-    benchmark_runner, mock_solver_factory, sample_puzzle, sample_solution
-):
-    # Create test puzzle and solution files
+def test_load_puzzle_alternate_keys(benchmark_runner, valid_puzzle):
     puzzle_path = os.path.join(benchmark_runner.puzzles_dir, "test.json")
-    solution_path = os.path.join(benchmark_runner.solutions_dir, "test.json")
 
+    # Test grid key
     with open(puzzle_path, "w") as f:
-        json.dump({"puzzle": sample_puzzle}, f)
-    with open(solution_path, "w") as f:
-        json.dump({"solution": sample_solution}, f)
+        json.dump({"grid": valid_puzzle}, f)
+    assert benchmark_runner.load_puzzle("test") == valid_puzzle
 
-    benchmark_runner.run_benchmarks()
+    # Test gridc key
+    with open(puzzle_path, "w") as f:
+        json.dump({"gridc": valid_puzzle}, f)
+    assert benchmark_runner.load_puzzle("test") == valid_puzzle
 
-    # Check if results files were created
-    results_files = os.listdir(benchmark_runner.results_dir)
-    assert len([f for f in results_files if f.endswith(".json")]) == 1
-    assert len([f for f in results_files if f.endswith(".csv")]) == 1
 
-    # Verify JSON results structure
-    json_file = next(f for f in results_files if f.endswith(".json"))
-    with open(os.path.join(benchmark_runner.results_dir, json_file)) as f:
-        results = json.load(f)
+@patch("multiprocessing.get_context")
+def test_run_solver_success(mock_get_context, benchmark_runner, valid_puzzle):
+    # Mock multiprocessing
+    mock_process = MagicMock()
+    mock_queue = MagicMock()
+    mock_queue.get_nowait.return_value = (True, 100)  # (result, propagations)
 
-    for solver in benchmark_runner.solvers:
-        assert solver in results
-        assert "puzzles" in results[solver]
-        assert "stats" in results[solver]
+    mock_context = MagicMock()
+    mock_context.Process.return_value = mock_process
+    mock_context.Queue.return_value = mock_queue
 
-        stats = results[solver]["stats"]
-        assert all(
-            key in stats
-            for key in [
-                "total_puzzles",
-                "solved_count",
-                "correct_count",
-                "total_time",
-                "total_propagations",
-                "avg_time",
-                "avg_propagations",
+    # Configure mock_process behavior
+    mock_process.is_alive.return_value = False
+
+    mock_get_context.return_value = mock_context
+
+    result = benchmark_runner.run_solver("Z3", valid_puzzle)
+
+    # Verify process interactions
+    mock_process.start.assert_called_once()
+    mock_process.join.assert_called_once_with(
+        timeout=30
+    )  # matches benchmark_runner timeout
+    mock_process.is_alive.assert_called_once()
+
+    assert result["status"] == "sat"
+    assert "solve_time" in result
+    assert result["propagations"] == 100
+
+
+def test_run_benchmarks(benchmark_runner, valid_puzzle):
+    # Create test puzzle file
+    puzzle_path = os.path.join(benchmark_runner.puzzles_dir, "test.json")
+    with open(puzzle_path, "w") as f:
+        json.dump({"puzzle": valid_puzzle}, f)
+
+    with patch.object(benchmark_runner, "run_solver") as mock_run_solver:
+        mock_run_solver.return_value = {
+            "status": "sat",
+            "solve_time": 0.1,
+            "propagations": 100,
+        }
+
+        benchmark_runner.run_benchmarks()
+
+        results_files = os.listdir(benchmark_runner.results_dir)
+        csv_files = [f for f in results_files if f.endswith(".csv")]
+
+        assert len(csv_files) == 1
+
+        # Verify CSV format
+        csv_path = os.path.join(benchmark_runner.results_dir, csv_files[0])
+        with open(csv_path) as f:
+            header = f.readline().strip().split(",")
+            assert header == [
+                "solver",
+                "puzzle_id",
+                "status",
+                "solve_time",
+                "propagations",
             ]
+
+
+def test_load_puzzle_no_valid_grid():
+    # Setup
+    puzzle_data = {"invalid_key": [[1, 2, 3]]}
+    mock_json = json.dumps(puzzle_data)
+
+    with (
+        patch("builtins.open", mock_open(read_data=mock_json)),
+        patch("builtins.print") as mock_print,
+    ):
+        runner = BenchmarkRunner()
+        result = runner.load_puzzle("test_puzzle")
+
+        # Assert
+        assert result is None
+        mock_print.assert_called_once_with(
+            "No valid grid found in test_puzzle. Available keys: ['invalid_key']"
+        )
+
+
+def test_load_puzzle_file_error():
+    # Setup
+    with (
+        patch("builtins.open", side_effect=Exception("File not found")),
+        patch("builtins.print") as mock_print,
+    ):
+        runner = BenchmarkRunner()
+        result = runner.load_puzzle("nonexistent_puzzle")
+
+        # Assert
+        assert result is None
+        mock_print.assert_called_once_with(
+            "Error loading puzzle nonexistent_puzzle: File not found"
         )
