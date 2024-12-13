@@ -17,6 +17,7 @@ class DPLLSolver:
         self.timeout = timeout
         self.cnf = CNF()  # CNF object to store Boolean clauses
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
+        self.solve_time = 0
         self.start_time = None  # Timeout tracking
 
     def add_sudoku_clauses(self) -> None:
@@ -128,10 +129,12 @@ class DPLLSolver:
             # Extract and validate the solution
             model = self.solver.get_model()
             solution = self.extract_solution(model)
+            self.solve_time = time.time() - self.start_time
             if self.validate_solution(solution):
                 return solution
             else:
                 raise SudokuError("Invalid solution generated.")
         else:
+            self.solve_time = time.time() - self.start_time
             # If UNSAT, return None
             return None

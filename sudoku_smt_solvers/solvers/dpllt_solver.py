@@ -19,6 +19,7 @@ class DPLLTSolver:
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
         self.theory_state = {}  # Store theory constraints dynamically
         self.decision_level = 0  # SAT decision level
+        self.solve_time = 0
         self.start_time = None  # Timeout tracking
 
     def add_sudoku_clauses(self) -> None:
@@ -169,9 +170,12 @@ class DPLLTSolver:
                 model = self.solver.get_model()
                 solution = self.extract_solution(model)
                 if self.validate_solution(solution):
+                    self.solve_time = time.time() - self.start_time
                     return solution
                 else:
+                    self.solve_time = time.time() - self.start_time
                     raise SudokuError("Invalid solution generated.")
 
+        self.solve_time = time.time() - self.start_time
         # If UNSAT, return None
         return None
