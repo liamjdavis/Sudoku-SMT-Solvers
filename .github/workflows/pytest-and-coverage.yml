@@ -24,6 +24,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-cov z3-solver cvc5
 
-      - name: Run tests with coverage
+      - name: Run unit tests and generate coverage report
         run: |
           pytest
+      
+      - name: Coveralls workflow
+        run: |
+          coveralls --service=github
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
