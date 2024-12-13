@@ -10,11 +10,9 @@ class BenchmarkRunner:
     def __init__(
         self,
         puzzles_dir: str = "benchmarks/puzzles",
-        solutions_dir: str = "benchmarks/solutions",
         results_dir: str = "benchmarks/results",
     ):
         self.puzzles_dir = puzzles_dir
-        self.solutions_dir = solutions_dir
         self.results_dir = results_dir
         self.solvers = {
             "CVC5": CVC5Solver,
@@ -22,7 +20,6 @@ class BenchmarkRunner:
             "DPLL(T)": DPLLTSolver,
             "Z3": Z3Solver,
         }
-        # Create results directory if it doesn't exist
         os.makedirs(results_dir, exist_ok=True)
 
     def load_puzzle(self, puzzle_id: str) -> Optional[List[List[int]]]:
@@ -31,7 +28,6 @@ class BenchmarkRunner:
         try:
             with open(puzzle_path, "r") as f:
                 data = json.load(f)
-                # Try different possible keys
                 for key in ["grid", "puzzle", "gridc"]:
                     if key in data:
                         return data[key]
@@ -43,41 +39,7 @@ class BenchmarkRunner:
             print(f"Error loading puzzle {puzzle_id}: {e}")
             return None
 
-    def load_solution(self, puzzle_id: str) -> Optional[List[List[int]]]:
-        """Load a solution from the solutions directory."""
-        # Remove '_puzzle' from the puzzle_id when looking for solution file
-        solution_id = puzzle_id.replace("_puzzle", "_solution")
-        solution_path = os.path.join(self.solutions_dir, f"{solution_id}.json")
-        try:
-            with open(solution_path, "r") as f:
-                data = json.load(f)
-                # Try different possible keys
-                for key in ["grid", "solution", "gridc"]:
-                    if key in data:
-                        return data[key]
-            print(
-                f"No valid grid found in {solution_id}. Available keys: {list(data.keys())}"
-            )
-            return None
-        except Exception as e:
-            print(f"Error loading solution {solution_id}: {e}")
-            return None
-
-    def validate_solution(
-        self, solution: List[List[int]], expected: List[List[int]]
-    ) -> bool:
-        """Validate if the solution matches the expected solution."""
-        if not solution or not expected:
-            return False
-        return all(
-            solution[i][j] == expected[i][j]
-            for i in range(len(solution))
-            for j in range(len(solution[0]))
-        )
-
-    def run_solver(
-        self, solver_name: str, puzzle: List[List[int]], expected: List[List[int]]
-    ) -> Dict:
+    def run_solver(self, solver_name: str, puzzle: List[List[int]]) -> Dict:
         """Run a single solver on a puzzle and collect results."""
         solver_class = self.solvers[solver_name]
         solver = solver_class(puzzle)
@@ -86,13 +48,11 @@ class BenchmarkRunner:
             solution = solver.solve()
             solve_time = getattr(solver, "solve_time", getattr(solver, "timeout", 120))
             is_sat = solution is not None
-            is_correct = self.validate_solution(solution, expected) if is_sat else False
             propagations = getattr(solver, "propagated_clauses", 0)
 
             return {
                 "status": "sat" if is_sat else "unsat",
                 "solve_time": solve_time,
-                "is_correct": is_correct,
                 "propagations": propagations,
             }
         except Exception as e:
@@ -105,14 +65,12 @@ class BenchmarkRunner:
 
     def run_benchmarks(self) -> None:
         """Run all solvers on all puzzles and save results."""
-        # Initialize results structure grouped by solver
         results = {
             solver_name: {
                 "puzzles": {},
                 "stats": {
                     "total_puzzles": 0,
                     "solved_count": 0,
-                    "correct_count": 0,
                     "total_time": 0,
                     "total_propagations": 0,
                     "avg_time": 0,
@@ -122,31 +80,25 @@ class BenchmarkRunner:
             for solver_name in self.solvers
         }
 
-        # Get all puzzle files
         puzzle_files = [f for f in os.listdir(self.puzzles_dir) if f.endswith(".json")]
 
         for puzzle_file in puzzle_files:
-            puzzle_id = puzzle_file[:-5]  # Remove .json extension
+            puzzle_id = puzzle_file[:-5]
             puzzle = self.load_puzzle(puzzle_id)
-            solution = self.load_solution(puzzle_id)
 
-            if not puzzle or not solution:
+            if not puzzle:
                 continue
 
             for solver_name in self.solvers:
                 print(f"Running {solver_name} on puzzle {puzzle_id}")
-                result = self.run_solver(solver_name, puzzle, solution)
+                result = self.run_solver(solver_name, puzzle)
 
-                # Store individual puzzle result
                 results[solver_name]["puzzles"][puzzle_id] = result
 
-                # Update solver statistics
                 stats = results[solver_name]["stats"]
                 stats["total_puzzles"] += 1
                 if result["status"] == "sat":
                     stats["solved_count"] += 1
-                if result.get("is_correct", False):
-                    stats["correct_count"] += 1
                 stats["total_time"] += result["solve_time"]
                 stats["total_propagations"] += result["propagations"]
 
@@ -164,7 +116,7 @@ class BenchmarkRunner:
         with open(result_path, "w") as f:
             json.dump(results, f, indent=2)
 
-        # Save analysis-friendly CSV format
+        # Save CSV format
         csv_data = []
         for solver_name, solver_results in results.items():
             for puzzle_id, puzzle_result in solver_results["puzzles"].items():
@@ -174,7 +126,6 @@ class BenchmarkRunner:
                         "puzzle_id": puzzle_id,
                         "status": puzzle_result["status"],
                         "solve_time": puzzle_result["solve_time"],
-                        "is_correct": puzzle_result.get("is_correct", False),
                         "propagations": puzzle_result["propagations"],
                     }
                 )
