@@ -31,20 +31,36 @@ class BenchmarkRunner:
         try:
             with open(puzzle_path, "r") as f:
                 data = json.load(f)
-                return data["puzzle"]
+                # Try different possible keys
+                for key in ["grid", "puzzle", "gridc"]:
+                    if key in data:
+                        return data[key]
+            print(
+                f"No valid grid found in {puzzle_id}. Available keys: {list(data.keys())}"
+            )
+            return None
         except Exception as e:
             print(f"Error loading puzzle {puzzle_id}: {e}")
             return None
 
     def load_solution(self, puzzle_id: str) -> Optional[List[List[int]]]:
         """Load a solution from the solutions directory."""
-        solution_path = os.path.join(self.solutions_dir, f"{puzzle_id}.json")
+        # Remove '_puzzle' from the puzzle_id when looking for solution file
+        solution_id = puzzle_id.replace("_puzzle", "_solution")
+        solution_path = os.path.join(self.solutions_dir, f"{solution_id}.json")
         try:
             with open(solution_path, "r") as f:
                 data = json.load(f)
-                return data["solution"]
+                # Try different possible keys
+                for key in ["grid", "solution", "gridc"]:
+                    if key in data:
+                        return data[key]
+            print(
+                f"No valid grid found in {solution_id}. Available keys: {list(data.keys())}"
+            )
+            return None
         except Exception as e:
-            print(f"Error loading solution {puzzle_id}: {e}")
+            print(f"Error loading solution {solution_id}: {e}")
             return None
 
     def validate_solution(
