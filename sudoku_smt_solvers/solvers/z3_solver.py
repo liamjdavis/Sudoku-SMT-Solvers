@@ -1,255 +1,148 @@
-import multiprocessing
+from z3 import Solver, Bool, Int, And, Or, Not, Implies, Distinct, sat, unsat
+from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
 import time
-from z3 import Solver, Bool, And, Or, Not, Implies, sat, unsat
-from .sudoku_error import SudokuError
 
 
 class Z3Solver:
-    def __init__(self, sudoku, timeout=120) -> None:
+    def __init__(self, sudoku, timeout=120):
         if timeout <= 0:
             raise SudokuError("Timeout must be positive")
 
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
-        self._validate_input(sudoku)
         self.sudoku = sudoku
+        self.size = len(sudoku)
         self.timeout = timeout
         self.solver = None
         self.variables = None
-        self.propagated_clauses = 0
         self.solve_time = 0
-
-    def _validate_input(self, sudoku):
-        if not sudoku or not isinstance(sudoku, list):
-            raise SudokuError("Invalid Sudoku puzzle: input must be a list")
-
-        if len(sudoku) != 25:
-            raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
-
-        for i, row in enumerate(sudoku):
-            if not isinstance(row, list) or len(row) != 25:
-                raise SudokuError(f"Invalid Sudoku puzzle: row {i} must have 25 cells")
-            for j, val in enumerate(row):
-                if not isinstance(val, int):
-                    raise SudokuError(
-                        f"Invalid value at position ({i},{j}): must be an integer"
-                    )
-                if val < 0 or val > 25:
-                    raise SudokuError(
-                        f"Invalid value {val} at position ({i},{j}): must be between 0 and 25"
-                    )
+        self.propagated_clauses = 0
+        self.start_time = None
 
     def create_variables(self):
-        """Set self.variables as a 3D list containing the Z3 variables."""
-        if not self.solver:
-            self.solver = Solver()
-        try:
-            self.variables = [
-                [[Bool(f"x_{i}_{j}_{k}") for k in range(25)] for j in range(25)]
-                for i in range(25)
-            ]
-        except Exception as e:
-            raise SudokuError(f"Failed to create Z3 variables: {str(e)}")
+        """
+        Set self.variables as a 3D list containing the Z3 variables.
+        self.variables[i][j][k] is true if cell i,j contains the value k+1.
+        """
+        self.variables = [
+            [Int(f"x_{i}_{j}") for j in range(self.size)] for i in range(self.size)
+        ]
 
     def encode_rules(self):
-        """Encode the rules of Sudoku into the solver."""
-        if not self.solver or not self.variables:
-            raise SudokuError("Solver not initialized properly")
+        """Encode Sudoku rules using Int variables and Distinct"""
+        # Cell range constraints
+        cell_constraints = []
+        for i in range(self.size):
+            for j in range(self.size):
+                cell_constraints.append(1 <= self.variables[i][j])
+                cell_constraints.append(self.variables[i][j] <= 25)
+        self.solver.add(cell_constraints)
 
-        try:
-            for i in range(25):
-                for j in range(25):
-                    try:
-                        self.solver.add(
-                            Or([self.variables[i][j][k] for k in range(25)])
-                        )
-                    except Exception as e:
-                        raise SudokuError(
-                            f"Failed to encode cell constraint at ({i},{j}): {str(e)}"
-                        )
+        # Row constraints unchanged
+        row_constraints = [Distinct(self.variables[i]) for i in range(self.size)]
+        self.solver.add(row_constraints)
 
-                    for k1 in range(25):
-                        for k2 in range(k1 + 1, 25):
-                            try:
-                                self.solver.add(
-                                    Not(
-                                        And(
-                                            self.variables[i][j][k1],
-                                            self.variables[i][j][k2],
-                                        )
-                                    )
-                                )
-                            except Exception as e:
-                                raise SudokuError(
-                                    f"Failed to encode value constraint at ({i},{j}): {str(e)}"
-                                )
+        # Column constraints unchanged
+        col_constraints = [
+            Distinct([self.variables[i][j] for i in range(self.size)])
+            for j in range(self.size)
+        ]
+        self.solver.add(col_constraints)
 
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Failed to encode Sudoku rules: {str(e)}")
+        # Box constraints unchanged
+        box_constraints = [
+            Distinct(
+                [
+                    self.variables[5 * box_i + i][5 * box_j + j]
+                    for i in range(5)
+                    for j in range(5)
+                ]
+            )
+            for box_i in range(5)
+            for box_j in range(5)
+        ]
+        self.solver.add(box_constraints)
 
     def encode_puzzle(self):
-        """Encode the initial puzzle into the solver."""
-        if not self.solver or not self.variables:
-            raise SudokuError("Solver not initialized properly")
-
-        try:
-            for i in range(25):
-                for j in range(25):
-                    if self.sudoku[i][j] != 0:
-                        try:
-                            self.solver.add(self.variables[i][j][self.sudoku[i][j] - 1])
-                        except Exception as e:
-                            raise SudokuError(
-                                f"Failed to encode initial value at ({i},{j}): {str(e)}"
-                            )
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Failed to encode initial puzzle: {str(e)}")
+        """Encode initial values directly"""
+        initial_values = []
+        for i in range(self.size):
+            for j in range(self.size):
+                if self.sudoku[i][j] != 0:
+                    initial_values.append(self.variables[i][j] == self.sudoku[i][j])
+        self.solver.add(initial_values)
 
     def extract_solution(self, model):
         """
-        Extract the solution from the model with error handling.
-
-        Args:
-            model: Z3 model containing solution
-
-        Returns:
-            2D list representing solved Sudoku grid
-
-        Raises:
-            SudokuError: If solution extraction fails
+        Extract solution from model.
         """
-        if not model:
-            raise SudokuError("Invalid model: model cannot be None")
+        return [
+            [model.evaluate(self.variables[i][j]).as_long() for j in range(self.size)]
+            for i in range(self.size)
+        ]
 
-        if not self.variables:
-            raise SudokuError("Variables not initialized")
+    def validate_solution(self, solution):
+        """
+        Validate if the solution meets Sudoku rules.
+        Returns True if valid, False otherwise.
+        """
+        # Check range
+        for row in solution:
+            if not all(1 <= num <= 25 for num in row):
+                return False
 
-        solution = [[0 for _ in range(25)] for _ in range(25)]
-        try:
-            for i in range(25):
-                for j in range(25):
-                    cell_assigned = False
-                    for k in range(25):
-                        try:
-                            if model.evaluate(self.variables[i][j][k]):
-                                if cell_assigned:
-                                    raise SudokuError(
-                                        f"Multiple values assigned to cell ({i},{j})"
-                                    )
-                                solution[i][j] = k + 1
-                                cell_assigned = True
-                        except Exception as e:
-                            raise SudokuError(
-                                f"Failed to evaluate variable at ({i},{j},{k}): {str(e)}"
-                            )
+        # Check rows
+        for row in solution:
+            if len(set(row)) != self.size:
+                return False
 
-                    if not cell_assigned:
-                        raise SudokuError(f"No value assigned to cell ({i},{j})")
+        # Check columns
+        for j in range(self.size):
+            col = [solution[i][j] for i in range(self.size)]
+            if len(set(col)) != self.size:
+                return False
 
-            return solution
+        # Check boxes
+        for box_i in range(5):
+            for box_j in range(5):
+                box = [
+                    solution[5 * box_i + i][5 * box_j + j]
+                    for i in range(5)
+                    for j in range(5)
+                ]
+                if len(set(box)) != self.size:
+                    return False
 
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Failed to extract solution: {str(e)}")
-
-    def _solve_task(self):
-        """Helper method to run in separate process"""
-        try:
-            self.solver = Solver()
-            self.create_variables()
-            self.encode_rules()
-            self.encode_puzzle()
-
-            try:
-                stats = self.solver.statistics()
-                try:
-                    self.propagated_clauses = stats.get("propagations", 0)
-                except (AttributeError, Exception):
-                    self.propagated_clauses = 0
-
-                result = self.solver.check()
-
-                if result == sat:
-                    model = self.solver.model()
-                    solution = self.extract_solution(model)
-
-                    if not self._validate_solution(solution):
-                        raise SudokuError("Generated solution is invalid")
-                    return solution
-
-            except SudokuError as e:
-                raise
-            except Exception as e:
-                raise SudokuError(f"Solver error: {str(e)}")
-
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Critical solver error: {str(e)}")
-
-        return None
+        return True
 
     def solve(self):
-        """Solve the Sudoku puzzle with multiprocessing-based timeout"""
-        try:
-            start_time = time.time()  # Start timing
-            # Skip multiprocessing if in test mode
-            if hasattr(self, "_testing"):
-                solution = self._solve_task()
-                self.solve_time = time.time() - start_time
+        """
+        Solve the Sudoku puzzle.
+        """
+        self.start_time = time.time()
+        self.solver = Solver()
+        self.create_variables()
+        self.encode_rules()
+        self.encode_puzzle()
+
+        # Set timeout
+        self.solver.set("timeout", self.timeout * 1000)  # Z3 timeout is in milliseconds
+
+        result = self.solver.check()
+        current_time = time.time()
+
+        # Check timeout
+        if current_time - self.start_time > self.timeout:
+            raise SudokuError("Solver timed out")
+
+        if result == sat:
+            model = self.solver.model()
+            solution = self.extract_solution(model)
+            self.solve_time = time.time() - self.start_time
+
+            if self.validate_solution(solution):
+                print(f"Solution found in {self.solve_time:.2f} seconds")
                 return solution
 
-            # Create a process pool with 1 worker
-            with multiprocessing.Pool(1) as pool:
-                try:
-                    # Run solver in separate process with timeout
-                    async_result = pool.apply_async(self._solve_task)
-                    solution = async_result.get(timeout=self.timeout)
-                    self.solve_time = time.time() - start_time  # Record solve time
-                    return solution
-
-                except multiprocessing.TimeoutError:
-                    self.solve_time = self.timeout
-                    raise SudokuError(f"Solver timed out after {self.timeout} seconds")
-
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Critical solver error: {str(e)}")
-
         return None
-
-    def _validate_solution(self, solution):
-        """Validate the generated solution"""
-        if not solution:
-            return False
-
-        try:
-            # Check dimensions
-            if len(solution) != 25 or any(len(row) != 25 for row in solution):
-                return False
-
-            # Check value range
-            if any(
-                not isinstance(val, int) or val < 1 or val > 25
-                for row in solution
-                for val in row
-            ):
-                return False
-
-            # Check if solution matches initial puzzle
-            for i in range(25):
-                for j in range(25):
-                    if self.sudoku[i][j] != 0 and self.sudoku[i][j] != solution[i][j]:
-                        return False
-
-            return True
-
-        except Exception:
-            return False

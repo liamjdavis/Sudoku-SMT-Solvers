@@ -1,192 +1,137 @@
-import multiprocessing
-import time
-
+from typing import List, Optional
+from pysat.solvers import Solver
+from pysat.formula import CNF
 from .sudoku_error import SudokuError
-from .utils import generate_cnf, get_var
+import time
 
 
 class DPLLSolver:
-    def __init__(self, sudoku, timeout=120) -> None:
+    def __init__(self, sudoku: List[List[int]], timeout: int = 120) -> None:
         if timeout <= 0:
             raise SudokuError("Timeout must be positive")
-
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
         self.sudoku = sudoku
         self.size = 25
-        self.propagated_clauses = 0
         self.timeout = timeout
-        self.clauses = []
-        self.assignments = {}
-        self.solve_time = 0  # Add timing variable
+        self.cnf = CNF()  # CNF object to store Boolean clauses
+        self.solver = Solver(name="glucose3")  # Low-level SAT solver
+        self.start_time = None  # Timeout tracking
 
-        # Generate CNF Form of Sudoku
-        try:
-            generate_cnf(self.size)
-        except Exception as e:
-            raise SudokuError(f"Error generating CNF: {e}")
+    def add_sudoku_clauses(self) -> None:
+        """Add Sudoku constraints as CNF clauses."""
+        size = self.size
+        block_size = int(size**0.5)
 
-    def find_unit_clause(self):
-        """Find a unit clause in the current formula"""
-        for clause in self.clauses:
-            unassigned = []
-            for lit in clause:
-                if abs(lit) not in self.assignments:
-                    unassigned.append(lit)
-                elif (lit > 0 and self.assignments[abs(lit)]) or (
-                    lit < 0 and not self.assignments[abs(lit)]
-                ):
-                    # Clause is satisfied
-                    break
-            else:
-                if len(unassigned) == 1:
-                    return unassigned[0]
-        return None
+        def get_var(row, col, num):
+            """Map (row, col, num) to a unique variable."""
+            return row * size * size + col * size + num
 
-    def find_pure_literal(self):
-        """Find a pure literal in the current formula"""
-        # Track both positive and negative occurrences of each variable
-        occurrences = {}
+        # At least one number in each cell
+        for row in range(size):
+            for col in range(size):
+                self.cnf.append([get_var(row, col, num) for num in range(1, size + 1)])
 
-        for clause in self.clauses:
-            if any(var in self.assignments.keys() for var in clause):
-                continue
+                # At most one number in each cell
+                for num1 in range(1, size + 1):
+                    for num2 in range(num1 + 1, size + 1):
+                        self.cnf.append(
+                            [-get_var(row, col, num1), -get_var(row, col, num2)]
+                        )
 
-            for lit in clause:
-                var = abs(lit)
-                if var not in self.assignments:  # Ignore already assigned variables
-                    if var not in occurrences:
-                        occurrences[var] = {"pos": False, "neg": False}
-                    if lit > 0:
-                        occurrences[var]["pos"] = True
-                    else:
-                        occurrences[var]["neg"] = True
+        # Add row constraints
+        for row in range(size):
+            for num in range(1, size + 1):
+                self.cnf.append([get_var(row, col, num) for col in range(size)])
 
-        # Find a variable that appears only positively or only negatively
-        for var, counts in occurrences.items():
-            if counts["pos"] and not counts["neg"]:  # Purely positive literal
-                return var
-            if counts["neg"] and not counts["pos"]:  # Purely negative literal
-                return -var
+        # Add column constraints
+        for col in range(size):
+            for num in range(1, size + 1):
+                self.cnf.append([get_var(row, col, num) for row in range(size)])
 
-        return None
+        # Add block constraints
+        for block_row in range(block_size):
+            for block_col in range(block_size):
+                for num in range(1, size + 1):
+                    self.cnf.append(
+                        [
+                            get_var(
+                                block_row * block_size + i,
+                                block_col * block_size + j,
+                                num,
+                            )
+                            for i in range(block_size)
+                            for j in range(block_size)
+                        ]
+                    )
 
-    def update_clauses(self, assignment):
-        """Update clauses based on new assignment"""
-        var = abs(assignment)
-        value = assignment > 0
-        self.assignments[var] = value
+        # Add initial assignments from the puzzle
+        for row in range(size):
+            for col in range(size):
+                if self.sudoku[row][col] != 0:
+                    num = self.sudoku[row][col]
+                    self.cnf.append([get_var(row, col, num)])
 
-        new_clauses = []
+    def extract_solution(self, model: List[int]) -> List[List[int]]:
+        """Convert SAT model to Sudoku grid."""
+        solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
+        for var in model:
+            if var > 0:  # Only consider positive assignments
+                var -= 1
+                num = var % self.size + 1
+                col = (var // self.size) % self.size
+                row = var // (self.size * self.size)
+                solution[row][col] = num
+        return solution
 
-        for clause in self.clauses:
-            if any(
-                lit > 0
-                and self.assignments.get(abs(lit), False)
-                or lit < 0
-                and not self.assignments.get(abs(lit), True)
-                for lit in clause
-            ):
-                self.propagated_clauses += 1
+    def validate_solution(self, solution: List[List[int]]) -> bool:
+        """
+        Validate the Sudoku solution.
+        Ensures all rows, columns, and blocks contain unique numbers from 1 to size.
+        """
+        size = self.size
+        block_size = int(size**0.5)
 
-                continue
-
-            new_clause = [lit for lit in clause if abs(lit) not in self.assignments]
-
-            if new_clause:
-                new_clauses.append(new_clause)
-
-            elif not new_clause:
-                self.propagated_clauses += 1
+        # Validate rows
+        for row in solution:
+            if len(set(row)) != size or not all(1 <= num <= size for num in row):
                 return False
 
-        self.clauses = new_clauses
+        # Validate columns
+        for col in range(size):
+            column = [solution[row][col] for row in range(size)]
+            if len(set(column)) != size:
+                return False
+
+        # Validate blocks
+        for block_row in range(block_size):
+            for block_col in range(block_size):
+                block = [
+                    solution[block_row * block_size + i][block_col * block_size + j]
+                    for i in range(block_size)
+                    for j in range(block_size)
+                ]
+                if len(set(block)) != size:
+                    return False
 
         return True
 
-    def dpll(self):
-        """Main DPLL algorithm"""
-        # Unit propagation
-        while unit := self.find_unit_clause():
-            if not self.update_clauses(unit):
-                return False
+    def solve(self) -> Optional[List[List[int]]]:
+        """Solve the Sudoku puzzle using DPLL."""
+        self.start_time = time.time()
+        self.add_sudoku_clauses()
+        self.solver.append_formula(self.cnf.clauses)
 
-        # Pure literal elimination
-        while pure := self.find_pure_literal():
-            if not self.update_clauses(pure):
-                return False
-
-        # All clauses satisfied
-        if not self.clauses:
-            return True
-
-        # Choose variable
-        var = abs(self.clauses[0][0])
-
-        # Try True
-        assignments_backup = self.assignments.copy()
-        clauses_backup = [clause[:] for clause in self.clauses]
-        if self.update_clauses(var) and self.dpll():
-            return True
-
-        # Try False
-        self.assignments = assignments_backup
-        self.clauses = clauses_backup
-        if self.update_clauses(-var) and self.dpll():
-            return True
-
-        return False
-
-    def _solve_task(self):
-        """Helper method to run in separate process"""
-        try:
-            for i in range(self.size):
-                for j in range(self.size):
-                    if self.sudoku[i][j] != 0:
-                        if not self.update_clauses(
-                            get_var(i, j, self.sudoku[i][j], self.size)
-                        ):
-                            return None
-
-            if self.dpll():
-                solution = [[0] * self.size for _ in range(self.size)]
-                for var, value in self.assignments.items():
-                    if value:
-                        row = (var - 1) // (self.size * self.size)
-                        col = ((var - 1) % (self.size * self.size)) // self.size
-                        num = ((var - 1) % self.size) + 1
-                        if 0 <= row < self.size and 0 <= col < self.size:
-                            solution[row][col] = num
+        # Solve the CNF formula directly using the SAT solver
+        if self.solver.solve():
+            # Extract and validate the solution
+            model = self.solver.get_model()
+            solution = self.extract_solution(model)
+            if self.validate_solution(solution):
                 return solution
+            else:
+                raise SudokuError("Invalid solution generated.")
+        else:
+            # If UNSAT, return None
             return None
-        except Exception as e:
-            raise SudokuError(f"Error solving puzzle: {str(e)}")
-
-    def solve(self):
-        """Solve the Sudoku puzzle"""
-        try:
-            start_time = time.time()  # Start timing
-
-            # Skip multiprocessing if in test mode
-            if hasattr(self, "_testing"):
-                return self._solve_task()
-
-            # Create a process pool with 1 worker
-            with multiprocessing.Pool(1) as pool:
-                try:
-                    # Run solver in separate process with timeout
-                    async_result = pool.apply_async(self._solve_task)
-                    solution = async_result.get(timeout=self.timeout)
-                    self.solve_time = time.time() - start_time  # Record solve time
-                    return solution
-
-                except multiprocessing.TimeoutError:
-                    self.solve_time = self.timeout
-                    raise SudokuError(f"Solver timed out after {self.timeout} seconds")
-
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Critical solver error: {str(e)}")
-        return None

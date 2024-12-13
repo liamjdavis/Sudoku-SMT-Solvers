@@ -1,11 +1,12 @@
+from typing import List, Optional
 import time
-import multiprocessing
+import atexit
 from cvc5 import Kind, Solver
 from .sudoku_error import SudokuError
 
 
 class CVC5Solver:
-    def __init__(self, sudoku, timeout=120) -> None:
+    def __init__(self, sudoku, timeout=120):
         if timeout <= 0:
             raise SudokuError("Timeout must be positive")
 
@@ -14,236 +15,178 @@ class CVC5Solver:
 
         self._validate_input(sudoku)
         self.sudoku = sudoku
+        self.size = len(sudoku)
         self.timeout = timeout
         self.solver = None
         self.variables = None
-        self.propagated_clauses = 0
         self.solve_time = 0
+        self.propagated_clauses = 0
+        self.start_time = None
 
     def _validate_input(self, sudoku):
-        if not sudoku or not isinstance(sudoku, list):
-            raise SudokuError("Invalid Sudoku puzzle: input must be a list")
-
-        if len(sudoku) != 25:
-            raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
-
+        """Validate the input Sudoku grid."""
         for i, row in enumerate(sudoku):
             if not isinstance(row, list) or len(row) != 25:
                 raise SudokuError(f"Invalid Sudoku puzzle: row {i} must have 25 cells")
             for j, val in enumerate(row):
-                if not isinstance(val, int):
+                if not isinstance(val, int) or not (0 <= val <= 25):
                     raise SudokuError(
-                        f"Invalid value at position ({i},{j}): must be an integer"
-                    )
-                if val < 0 or val > 25:
-                    raise SudokuError(
-                        f"Invalid value {val} at position ({i},{j}): must be between 0 and 25"
+                        f"Invalid value at position ({i},{j}): must be between 0 and 25"
                     )
 
     def create_variables(self):
-        """Set self.variables as a 3D list containing the CVC5 variables."""
-        if not self.solver:
-            self.solver = Solver()
-            self.solver.setOption("produce-models", "true")  # Enable model generation
-            self.solver.setLogic("QF_BV")  # Use bit-vector logic
-
-        try:
-            self.variables = [
-                [
-                    [
-                        self.solver.mkConst(
-                            self.solver.getBooleanSort(), f"x_{i}_{j}_{k}"
-                        )
-                        for k in range(25)
-                    ]
-                    for j in range(25)
-                ]
-                for i in range(25)
-            ]
-        except Exception as e:
-            raise SudokuError(f"Failed to create CVC5 variables: {str(e)}")
-
-    def encode_rules(self):
-        """Encode the rules of Sudoku into the solver."""
-        if not self.solver or not self.variables:
-            raise SudokuError("Solver not initialized properly")
-
-        try:
-            for i in range(25):
-                for j in range(25):
-                    # Each cell must have at least one value
-                    try:
-                        cell_values = [self.variables[i][j][k] for k in range(25)]
-                        self.solver.assertFormula(
-                            self.solver.mkTerm(Kind.OR, *cell_values)
-                        )
-                    except Exception as e:
-                        raise SudokuError(
-                            f"Failed to encode cell constraint at ({i},{j}): {str(e)}"
-                        )
-
-                    # Each cell can't have more than one value
-                    for k1 in range(25):
-                        for k2 in range(k1 + 1, 25):
-                            try:
-                                not_both = self.solver.mkTerm(
-                                    Kind.NOT,
-                                    self.solver.mkTerm(
-                                        Kind.AND,
-                                        self.variables[i][j][k1],
-                                        self.variables[i][j][k2],
-                                    ),
-                                )
-                                self.solver.assertFormula(not_both)
-                            except Exception as e:
-                                raise SudokuError(
-                                    f"Failed to encode value constraint at ({i},{j}): {str(e)}"
-                                )
-
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Failed to encode Sudoku rules: {str(e)}")
-
-    def encode_puzzle(self):
-        """Encode the initial puzzle into the solver."""
-        if not self.solver or not self.variables:
-            raise SudokuError("Solver not initialized properly")
-
-        try:
-            for i in range(25):
-                for j in range(25):
-                    if self.sudoku[i][j] != 0:
-                        try:
-                            self.solver.assertFormula(
-                                self.variables[i][j][self.sudoku[i][j] - 1]
-                            )
-                        except Exception as e:
-                            raise SudokuError(
-                                f"Failed to encode initial value at ({i},{j}): {str(e)}"
-                            )
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Failed to encode initial puzzle: {str(e)}")
-
-    def extract_solution(self, model):
-        """Extract the solution from the CVC5 model."""
-        if not model:
-            raise SudokuError("Invalid model: model cannot be None")
-
-        if not self.variables:
-            raise SudokuError("Variables not initialized")
-
-        solution = [[0 for _ in range(25)] for _ in range(25)]
-        try:
-            for i in range(25):
-                for j in range(25):
-                    cell_assigned = False
-                    for k in range(25):
-                        try:
-                            if model(self.variables[i][j][k]).getBooleanValue():
-                                if cell_assigned:
-                                    raise SudokuError(
-                                        f"Multiple values assigned to cell ({i},{j})"
-                                    )
-                                solution[i][j] = k + 1
-                                cell_assigned = True
-                        except Exception as e:
-                            raise SudokuError(
-                                f"Failed to evaluate variable at ({i},{j},{k}): {str(e)}"
-                            )
-
-                    if not cell_assigned:
-                        raise SudokuError(f"No value assigned to cell ({i},{j})")
-
-            return solution
-
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Failed to extract solution: {str(e)}")
-
-    def _solve_task(self):
-        """Helper method to run in separate process"""
+        """Set self.variables as a 2D list containing the CVC5 variables."""
         self.solver = Solver()
         self.solver.setOption("produce-models", "true")
+        self.solver.setOption("incremental", "true")
+        self.solver.setLogic("QF_LIA")  # Quantifier-Free Linear Integer Arithmetic
+
+        integer_sort = self.solver.getIntegerSort()
+        self.variables = [
+            [self.solver.mkConst(integer_sort, f"x_{i}_{j}") for j in range(25)]
+            for i in range(25)
+        ]
+        atexit.register(self.cleanup)
+
+    def encode_rules(self):
+        """Encode the Sudoku rules into the solver."""
+        # Domain constraints: Ensure each variable is between 1 and 25
+        for i in range(25):
+            for j in range(25):
+                self.solver.assertFormula(
+                    self.solver.mkTerm(
+                        Kind.AND,
+                        self.solver.mkTerm(
+                            Kind.LEQ, self.solver.mkInteger(1), self.variables[i][j]
+                        ),
+                        self.solver.mkTerm(
+                            Kind.LEQ, self.variables[i][j], self.solver.mkInteger(25)
+                        ),
+                    )
+                )
+
+        # Row constraints: Each number appears exactly once in each row
+        for i in range(25):
+            self.solver.assertFormula(
+                self.solver.mkTerm(
+                    Kind.DISTINCT, *[self.variables[i][j] for j in range(25)]
+                )
+            )
+
+        # Column constraints: Each number appears exactly once in each column
+        for j in range(25):
+            self.solver.assertFormula(
+                self.solver.mkTerm(
+                    Kind.DISTINCT, *[self.variables[i][j] for i in range(25)]
+                )
+            )
+
+        # 5x5 subgrid constraints: Each number appears exactly once in each subgrid
+        for block_row in range(0, 25, 5):
+            for block_col in range(0, 25, 5):
+                block_vars = [
+                    self.variables[i][j]
+                    for i in range(block_row, block_row + 5)
+                    for j in range(block_col, block_col + 5)
+                ]
+                self.solver.assertFormula(
+                    self.solver.mkTerm(Kind.DISTINCT, *block_vars)
+                )
+
+    def encode_puzzle(self):
+        """Encode the initial Sudoku puzzle into the solver."""
+        for i in range(25):
+            for j in range(25):
+                if self.sudoku[i][j] != 0:  # Pre-filled cell
+                    self.solver.assertFormula(
+                        self.solver.mkTerm(
+                            Kind.EQUAL,
+                            self.variables[i][j],
+                            self.solver.mkInteger(self.sudoku[i][j]),
+                        )
+                    )
+
+    def extract_solution(self):
+        """Extract the solution from the CVC5 model."""
+        solution = [[0 for _ in range(25)] for _ in range(25)]
+        for i in range(25):
+            for j in range(25):
+                solution[i][j] = self.solver.getValue(
+                    self.variables[i][j]
+                ).getIntegerValue()
+        return solution
+
+    def _solve_task(self):
+        """Helper method to encode and solve the puzzle."""
         self.create_variables()
         self.encode_rules()
         self.encode_puzzle()
 
         result = self.solver.checkSat()
         if result.isSat():
-            return self.solver.getValue
+            return self.extract_solution()
         return None
 
-    def solve(self):
-        """Solve the Sudoku puzzle using CVC5."""
-        start_time = time.time()  # Start timing
-        try:
-            # Skip multiprocessing if in test mode
-            if hasattr(self, "_testing"):
-                model = self._solve_task()
-            else:
-                # Create a process pool with 1 worker
-                with multiprocessing.Pool(1) as pool:
-                    try:
-                        # Run solver in separate process with timeout
-                        async_result = pool.apply_async(self._solve_task)
-                        model = async_result.get(timeout=self.timeout)
-                    except multiprocessing.TimeoutError:
-                        raise SudokuError(
-                            f"Solver timed out after {self.timeout} seconds"
-                        )
+    def cleanup(self):
+        """Clean up solver resources."""
+        if self.solver:
+            self.solver = None
 
-            if model:
-                solution = self.extract_solution(model)
-                try:
-                    self.propagated_clauses = self.solver.getStatistic("propagations")
-                except Exception:
-                    self.propagated_clauses = 0
-
-                if not self._validate_solution(solution):
-                    raise SudokuError("Generated solution is invalid")
-                self.solve_time = (
-                    time.time() - start_time
-                )  # Record successful solve time
-                return solution
-            self.solve_time = (
-                time.time() - start_time
-            )  # Record time when no solution found
-            return None
-
-        except SudokuError:
-            raise
-        except Exception as e:
-            raise SudokuError(f"Critical solver error: {str(e)}")
-
-    def _validate_solution(self, solution):
-        """Validate the generated solution"""
+    def validate_solution(self, solution):
         if not solution:
             return False
 
-        try:
-            # Check dimensions
-            if len(solution) != 25 or any(len(row) != 25 for row in solution):
-                return False
-
-            # Check value range
-            if any(
-                not isinstance(val, int) or val < 1 or val > 25
-                for row in solution
-                for val in row
-            ):
-                return False
-
-            # Check if solution matches initial puzzle
-            for i in range(25):
-                for j in range(25):
-                    if self.sudoku[i][j] != 0 and self.sudoku[i][j] != solution[i][j]:
-                        return False
-
-            return True
-
-        except Exception:
+        # Check dimensions
+        if len(solution) != self.size or any(len(row) != self.size for row in solution):
             return False
+
+        valid_nums = set(range(1, self.size + 1))
+
+        # Check rows
+        if any(set(row) != valid_nums for row in solution):
+            return False
+
+        # Check columns
+        for col in range(self.size):
+            if set(solution[row][col] for row in range(self.size)) != valid_nums:
+                return False
+
+        # Check 5x5 subgrids
+        subgrid_size = 5
+        for box_row in range(0, self.size, subgrid_size):
+            for box_col in range(0, self.size, subgrid_size):
+                numbers = set()
+                for i in range(subgrid_size):
+                    for j in range(subgrid_size):
+                        numbers.add(solution[box_row + i][box_col + j])
+                if numbers != valid_nums:
+                    return False
+
+        return True
+
+    def solve(self):
+        """Solve the Sudoku puzzle."""
+        self.start_time = time.time()
+        try:
+            self.create_variables()
+            self.encode_rules()
+            self.encode_puzzle()
+
+            result = self.solver.checkSat()
+            current_time = time.time()
+
+            if current_time - self.start_time > self.timeout:
+                raise SudokuError("Solver timed out")
+
+            if result.isSat():
+                solution = self.extract_solution()
+                self.solve_time = time.time() - self.start_time
+
+                if self.validate_solution(solution):
+                    return solution
+            return None
+
+        except Exception as e:
+            if "timed out" in str(e).lower():
+                raise SudokuError("Solver timed out")
+            raise SudokuError(f"Critical solver error: {str(e)}")
