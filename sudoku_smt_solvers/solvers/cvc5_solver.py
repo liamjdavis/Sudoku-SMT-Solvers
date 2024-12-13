@@ -34,11 +34,20 @@ class CVC5Solver:
                         f"Invalid value at position ({i},{j}): must be between 0 and 25"
                     )
 
+    def _count_assertion(self):
+        """Increment propagated clauses counter when asserting a formula"""
+        self.propagated_clauses += 1
+
     def create_variables(self):
         """Set self.variables as a 2D list containing the CVC5 variables."""
         self.solver = Solver()
+
+        # Configure CVC5 solver options
         self.solver.setOption("produce-models", "true")
         self.solver.setOption("incremental", "true")
+        self.solver.setOption(
+            "tlimit", str(self.timeout * 1000)
+        )  # CVC5 timeout in milliseconds
         self.solver.setLogic("QF_LIA")  # Quantifier-Free Linear Integer Arithmetic
 
         integer_sort = self.solver.getIntegerSort()
@@ -50,7 +59,7 @@ class CVC5Solver:
 
     def encode_rules(self):
         """Encode the Sudoku rules into the solver."""
-        # Domain constraints: Ensure each variable is between 1 and 25
+        # Domain constraints
         for i in range(25):
             for j in range(25):
                 self.solver.assertFormula(
@@ -64,24 +73,27 @@ class CVC5Solver:
                         ),
                     )
                 )
+                self._count_assertion()
 
-        # Row constraints: Each number appears exactly once in each row
+        # Row constraints
         for i in range(25):
             self.solver.assertFormula(
                 self.solver.mkTerm(
                     Kind.DISTINCT, *[self.variables[i][j] for j in range(25)]
                 )
             )
+            self._count_assertion()
 
-        # Column constraints: Each number appears exactly once in each column
+        # Column constraints
         for j in range(25):
             self.solver.assertFormula(
                 self.solver.mkTerm(
                     Kind.DISTINCT, *[self.variables[i][j] for i in range(25)]
                 )
             )
+            self._count_assertion()
 
-        # 5x5 subgrid constraints: Each number appears exactly once in each subgrid
+        # 5x5 subgrid constraints
         for block_row in range(0, 25, 5):
             for block_col in range(0, 25, 5):
                 block_vars = [
@@ -92,6 +104,7 @@ class CVC5Solver:
                 self.solver.assertFormula(
                     self.solver.mkTerm(Kind.DISTINCT, *block_vars)
                 )
+                self._count_assertion()
 
     def encode_puzzle(self):
         """Encode the initial Sudoku puzzle into the solver."""
@@ -105,6 +118,7 @@ class CVC5Solver:
                             self.solver.mkInteger(self.sudoku[i][j]),
                         )
                     )
+                    self._count_assertion()
 
     def extract_solution(self):
         """Extract the solution from the CVC5 model."""
@@ -172,21 +186,25 @@ class CVC5Solver:
             self.encode_rules()
             self.encode_puzzle()
 
-            result = self.solver.checkSat()
-            current_time = time.time()
+            # Check Python-level timeout
+            if time.time() - self.start_time > self.timeout:
+                self.solve_time = self.timeout
+                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
 
-            if current_time - self.start_time > self.timeout:
-                raise SudokuError("Solver timed out")
+            result = self.solver.checkSat()
+
+            # Store solve time
+            self.solve_time = time.time() - self.start_time
 
             if result.isSat():
                 solution = self.extract_solution()
-                self.solve_time = time.time() - self.start_time
-
                 if self.validate_solution(solution):
                     return solution
             return None
 
         except Exception as e:
-            if "timed out" in str(e).lower():
-                raise SudokuError("Solver timed out")
-            raise SudokuError(f"Critical solver error: {str(e)}")
+            if "timeout" in str(e).lower() or "resource limit" in str(e).lower():
+                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
+            raise
+        finally:
+            self.cleanup()

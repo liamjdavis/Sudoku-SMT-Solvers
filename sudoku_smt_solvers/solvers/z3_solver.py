@@ -29,6 +29,10 @@ class Z3Solver:
             [Int(f"x_{i}_{j}") for j in range(self.size)] for i in range(self.size)
         ]
 
+    def _count_clause(self):
+        """Increment propagated clauses counter when adding a constraint"""
+        self.propagated_clauses += 1
+
     def encode_rules(self):
         """Encode Sudoku rules using Int variables and Distinct"""
         # Cell range constraints
@@ -37,20 +41,26 @@ class Z3Solver:
             for j in range(self.size):
                 cell_constraints.append(1 <= self.variables[i][j])
                 cell_constraints.append(self.variables[i][j] <= 25)
+                self._count_clause()
+                self._count_clause()
         self.solver.add(cell_constraints)
 
-        # Row constraints unchanged
+        # Row constraints
         row_constraints = [Distinct(self.variables[i]) for i in range(self.size)]
         self.solver.add(row_constraints)
+        for _ in range(self.size):
+            self._count_clause()
 
-        # Column constraints unchanged
+        # Column constraints
         col_constraints = [
             Distinct([self.variables[i][j] for i in range(self.size)])
             for j in range(self.size)
         ]
         self.solver.add(col_constraints)
+        for _ in range(self.size):
+            self._count_clause()
 
-        # Box constraints unchanged
+        # Box constraints
         box_constraints = [
             Distinct(
                 [
@@ -63,6 +73,8 @@ class Z3Solver:
             for box_j in range(5)
         ]
         self.solver.add(box_constraints)
+        for _ in range(25):
+            self._count_clause()
 
     def encode_puzzle(self):
         """Encode initial values directly"""
@@ -71,6 +83,7 @@ class Z3Solver:
             for j in range(self.size):
                 if self.sudoku[i][j] != 0:
                     initial_values.append(self.variables[i][j] == self.sudoku[i][j])
+                    self._count_clause()
         self.solver.add(initial_values)
 
     def extract_solution(self, model):
@@ -142,7 +155,6 @@ class Z3Solver:
             self.solve_time = time.time() - self.start_time
 
             if self.validate_solution(solution):
-                print(f"Solution found in {self.solve_time:.2f} seconds")
                 return solution
 
         return None
