@@ -1,2 +1,5 @@
 sphinx
 sphinx_rtd_theme
+python-sat
+z3-solver
+cvc5
