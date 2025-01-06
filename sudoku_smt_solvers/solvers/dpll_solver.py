@@ -8,7 +8,7 @@ class DPLLSolver:
     """DPLL-based Sudoku solver using SAT encoding.
 
     Solves 25x25 Sudoku puzzles by converting them to CNF (Conjunctive Normal Form)
-    and using the DPLL algorithm to find a satisfying assignment.
+    and using DPLL to find a satisfying assignment.
 
     Attributes:
         sudoku (List[List[int]]): Input puzzle as 25x25 grid

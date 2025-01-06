@@ -14,7 +14,7 @@ class DPLLTSolver:
         sudoku (List[List[int]]): Input puzzle as 25x25 grid
         size (int): Grid size (25)
         cnf (CNF): PySAT CNF formula object
-        solver (Solver): PySAT Glucose3 solver instance
+        solver (Solver): PySAT Glucose3 solver
         theory_state (dict): Dynamic tracking of theory constraints
         decision_level (int): Current depth in decision tree
         propagated_clauses (int): Counter for clause additions

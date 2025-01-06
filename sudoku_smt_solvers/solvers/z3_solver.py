@@ -12,7 +12,7 @@ class Z3Solver:
         sudoku (List[List[int]]): Input puzzle as 25x25 grid
         size (int): Grid size (25)
         solver (z3.Solver): Z3 solver instance
-        variables (List[List[z3.Int]]): SMT variables for grid cells
+        variables (List[List[z3.Int]]): SMT variables for grid
         propagated_clauses (int): Counter for constraint additions
 
     Example:

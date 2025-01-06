@@ -121,7 +121,7 @@ class BenchmarkRunner:
 
         The CSV output includes:
         - Solver name
-        - Puzzle identifier
+        - Puzzle unique ID
         - Solution status
         - Solve time
         - Propagation count
