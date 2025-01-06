@@ -64,7 +64,7 @@ class SudokuGenerator:
 
         Uses a two-step process:
         1. Las Vegas algorithm generates a complete valid solution
-        2. Hole digger creates the puzzle by removing numbers
+        2. Hole digger creates the puzzle by removing certain cells
 
         Returns:
             tuple: Contains:
