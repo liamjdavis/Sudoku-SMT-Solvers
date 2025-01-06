@@ -16,7 +16,7 @@ CLASSIFIERS = [
 ]
 INSTALL_REQUIRES = [
     "cvc5",
-    "pysat",
+    "python-sat",
     "z3-solver",
 ]
 ENTRY_POINTS = {}
@@ -53,5 +53,5 @@ if __name__ == "__main__":
         entry_points=ENTRY_POINTS,
         scripts=SCRIPTS,
         include_package_data=True,
-        python_requires=">=3.9",
+        python_requires=">=3.10",
     )
