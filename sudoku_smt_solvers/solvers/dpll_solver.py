@@ -2,23 +2,17 @@ from typing import List, Optional
 from pysat.solvers import Solver
 from pysat.formula import CNF
 from .sudoku_error import SudokuError
-import time
 
 
 class DPLLSolver:
-    def __init__(self, sudoku: List[List[int]], timeout: int = 120) -> None:
-        if timeout <= 0:
-            raise SudokuError("Timeout must be positive")
+    def __init__(self, sudoku: List[List[int]]) -> None:
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
         self.sudoku = sudoku
         self.size = 25
-        self.timeout = timeout
         self.cnf = CNF()  # CNF object to store Boolean clauses
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
-        self.solve_time = 0
-        self.start_time = None  # Timeout tracking
         self.propagated_clauses = 0  # Add clause counter
 
     def _count_clause(self) -> None:
@@ -131,39 +125,22 @@ class DPLLSolver:
 
     def solve(self) -> Optional[List[List[int]]]:
         """Solve the Sudoku puzzle using DPLL."""
-        self.start_time = time.time()
         self.add_sudoku_clauses()
-
-        # Calculate remaining time for solver
-        elapsed = time.time() - self.start_time
-        remaining_time = max(1, int(self.timeout - elapsed))
-
-        # Configure SAT solver timeout using conf_budget
-        self.solver.conf_budget(remaining_time * 1000)  # Convert to milliseconds
         self.solver.append_formula(self.cnf.clauses)
-
-        # Check Python-level timeout
-        if time.time() - self.start_time > self.timeout:
-            self.solve_time = self.timeout
-            raise SudokuError(f"Solving timed out after {self.timeout} seconds")
 
         try:
             if self.solver.solve():
                 # Extract and validate the solution
                 model = self.solver.get_model()
                 solution = self.extract_solution(model)
-                self.solve_time = time.time() - self.start_time
 
                 if self.validate_solution(solution):
                     return solution
                 else:
                     raise SudokuError("Invalid solution generated.")
             else:
-                self.solve_time = time.time() - self.start_time
                 # If unsat, return None
                 return None
 
         except Exception as e:
-            if "timeout" in str(e).lower() or "resource limit" in str(e).lower():
-                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
             raise

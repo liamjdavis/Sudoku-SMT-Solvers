@@ -20,14 +20,7 @@ def valid_solution():
 def test_solver_init_valid(valid_puzzle):
     solver = Z3Solver(valid_puzzle)
     assert solver.size == 25
-    assert solver.timeout == 120
-    assert solver.solve_time == 0
     assert solver.propagated_clauses == 0
-
-
-def test_solver_init_invalid_timeout():
-    with pytest.raises(SudokuError, match="Timeout must be positive"):
-        Z3Solver([[]], timeout=0)
 
 
 def test_solver_init_invalid_grid():
@@ -80,16 +73,7 @@ def test_solve_valid_puzzle(valid_puzzle, valid_solution):
     result = solver.solve()
     assert result is not None
     assert result == valid_solution
-    assert solver.solve_time > 0
     assert solver.propagated_clauses > 0
-
-
-def test_solve_timeout():
-    # Create a puzzle that would take too long to solve
-    difficult_puzzle = [[0 for _ in range(25)] for _ in range(25)]
-    solver = Z3Solver(difficult_puzzle, timeout=1)  # Very short timeout
-    with pytest.raises(SudokuError, match="Solver timed out"):
-        solver.solve()
 
 
 def test_solve_unsolvable():

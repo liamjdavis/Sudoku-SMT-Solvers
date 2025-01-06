@@ -20,13 +20,7 @@ def valid_solution():
 def test_init_valid(valid_puzzle):
     solver = DPLLTSolver(valid_puzzle)
     assert solver.size == 25
-    assert solver.timeout == 120
     assert solver.sudoku == valid_puzzle
-
-
-def test_init_invalid_timeout():
-    with pytest.raises(SudokuError, match="Timeout must be positive"):
-        DPLLTSolver([[]], timeout=0)
 
 
 def test_init_invalid_grid():
@@ -80,5 +74,4 @@ def test_solve_complete(valid_puzzle, valid_solution):
 def test_solve_metrics(valid_puzzle):
     solver = DPLLTSolver(valid_puzzle)
     solution = solver.solve()
-    assert solver.solve_time > 0
     assert solver.propagated_clauses > 0

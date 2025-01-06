@@ -1,29 +1,22 @@
-from z3 import Solver, Bool, Int, And, Or, Not, Implies, Distinct, sat, unsat
+from z3 import Solver, Int, Distinct, sat
 from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
-import time
 
 
 class Z3Solver:
-    def __init__(self, sudoku, timeout=120):
-        if timeout <= 0:
-            raise SudokuError("Timeout must be positive")
-
+    def __init__(self, sudoku):
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
         self.sudoku = sudoku
         self.size = len(sudoku)
-        self.timeout = timeout
         self.solver = None
         self.variables = None
-        self.solve_time = 0
         self.propagated_clauses = 0
-        self.start_time = None
 
     def create_variables(self):
         """
         Set self.variables as a 3D list containing the Z3 variables.
-        self.variables[i][j][k] is true if cell i,j contains the value k+1.
+        self.variables[i][j] is an integer variable representing the value in cell (i, j).
         """
         self.variables = [
             [Int(f"x_{i}_{j}") for j in range(self.size)] for i in range(self.size)
@@ -133,26 +126,16 @@ class Z3Solver:
         """
         Solve the Sudoku puzzle.
         """
-        self.start_time = time.time()
         self.solver = Solver()
         self.create_variables()
         self.encode_rules()
         self.encode_puzzle()
 
-        # Set timeout
-        self.solver.set("timeout", self.timeout * 1000)  # Z3 timeout is in milliseconds
-
         result = self.solver.check()
-        current_time = time.time()
-
-        # Check timeout
-        if current_time - self.start_time > self.timeout:
-            raise SudokuError("Solver timed out")
 
         if result == sat:
             model = self.solver.model()
             solution = self.extract_solution(model)
-            self.solve_time = time.time() - self.start_time
 
             if self.validate_solution(solution):
                 return solution

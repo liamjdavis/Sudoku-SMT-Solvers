@@ -1,27 +1,20 @@
 from typing import List, Optional
-import time
 import atexit
 from cvc5 import Kind, Solver
 from .sudoku_error import SudokuError
 
 
 class CVC5Solver:
-    def __init__(self, sudoku, timeout=120):
-        if timeout <= 0:
-            raise SudokuError("Timeout must be positive")
-
+    def __init__(self, sudoku):
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
         self._validate_input(sudoku)
         self.sudoku = sudoku
         self.size = len(sudoku)
-        self.timeout = timeout
         self.solver = None
         self.variables = None
-        self.solve_time = 0
         self.propagated_clauses = 0
-        self.start_time = None
 
     def _validate_input(self, sudoku):
         """Validate the input Sudoku grid."""
@@ -45,9 +38,6 @@ class CVC5Solver:
         # Configure CVC5 solver options
         self.solver.setOption("produce-models", "true")
         self.solver.setOption("incremental", "true")
-        self.solver.setOption(
-            "tlimit", str(self.timeout * 1000)
-        )  # CVC5 timeout in milliseconds
         self.solver.setLogic("QF_LIA")  # Quantifier-Free Linear Integer Arithmetic
 
         integer_sort = self.solver.getIntegerSort()
@@ -169,21 +159,12 @@ class CVC5Solver:
 
     def solve(self):
         """Solve the Sudoku puzzle."""
-        self.start_time = time.time()
         try:
             self.create_variables()
             self.encode_rules()
             self.encode_puzzle()
 
-            # Check Python-level timeout
-            if time.time() - self.start_time > self.timeout:
-                self.solve_time = self.timeout
-                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
-
             result = self.solver.checkSat()
-
-            # Store solve time
-            self.solve_time = time.time() - self.start_time
 
             if result.isSat():
                 solution = self.extract_solution()
@@ -192,8 +173,6 @@ class CVC5Solver:
             return None
 
         except Exception as e:
-            if "timeout" in str(e).lower() or "resource limit" in str(e).lower():
-                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
             raise
         finally:
             self.cleanup()

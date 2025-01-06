@@ -2,26 +2,20 @@ from typing import List, Optional
 from pysat.solvers import Solver
 from pysat.formula import CNF
 from .sudoku_error import SudokuError
-import time
 
 
 class DPLLTSolver:
-    def __init__(self, sudoku: List[List[int]], timeout: int = 120) -> None:
-        if timeout <= 0:
-            raise SudokuError("Timeout must be positive")
+    def __init__(self, sudoku: List[List[int]]) -> None:
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
         self.sudoku = sudoku
         self.size = 25
-        self.timeout = timeout
         self.cnf = CNF()  # CNF object to store Boolean clauses
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
         self.theory_state = {}  # Store theory constraints dynamically
         self.decision_level = 0
         self.propagated_clauses = 0
-        self.solve_time = 0
-        self.start_time = None  # Timeout tracking
 
     def _count_clause(self) -> None:
         """Increment propagated clauses counter when adding a clause"""
@@ -166,16 +160,10 @@ class DPLLTSolver:
 
     def solve(self) -> Optional[List[List[int]]]:
         """Solve the Sudoku puzzle using DPLL(T)."""
-        self.start_time = time.time()
         self.add_sudoku_clauses()
         self.solver.append_formula(self.cnf.clauses)
 
         while self.solver.solve():
-            # Check timeout
-            if time.time() - self.start_time > self.timeout:
-                self.solve_time = self.timeout
-                raise SudokuError(f"Solving timed out after {self.timeout} seconds")
-
             # Perform theory propagation
             conflict_clause = self.theory_propagation()
             if conflict_clause:
@@ -187,13 +175,9 @@ class DPLLTSolver:
                 model = self.solver.get_model()
                 solution = self.extract_solution(model)
                 if self.validate_solution(solution):
-                    self.solve_time = time.time() - self.start_time
-
                     return solution
                 else:
-                    self.solve_time = time.time() - self.start_time
                     raise SudokuError("Invalid solution generated.")
 
-        self.solve_time = time.time() - self.start_time
         # If UNSAT, return None
         return None

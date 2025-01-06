@@ -38,12 +38,6 @@ def solved_grid():
 def test_init_valid(valid_empty_grid):
     solver = CVC5Solver(valid_empty_grid)
     assert solver.size == 25
-    assert solver.timeout == 120
-
-
-def test_init_invalid_timeout():
-    with pytest.raises(SudokuError, match="Timeout must be positive"):
-        CVC5Solver([[]], timeout=0)
 
 
 def test_init_invalid_grid_none():

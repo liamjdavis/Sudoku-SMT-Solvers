@@ -22,15 +22,7 @@ def test_init_valid():
     puzzle = [[0] * 25 for _ in range(25)]
     solver = DPLLSolver(puzzle)
     assert solver.size == 25
-    assert solver.timeout == 120  # default timeout
     assert solver.propagated_clauses == 0
-
-
-def test_init_invalid_timeout():
-    """Test initialization with invalid timeout"""
-    puzzle = [[0] * 25 for _ in range(25)]
-    with pytest.raises(SudokuError, match="Timeout must be positive"):
-        DPLLSolver(puzzle, timeout=0)
 
 
 def test_init_invalid_puzzle():
@@ -84,11 +76,3 @@ def test_solve_valid_puzzle(valid_puzzle, valid_solution):
     assert solver.validate_solution(solution)
     # Verify solution matches known solution
     assert solution == valid_solution
-
-
-def test_solve_timeout():
-    """Test solver timeout"""
-    puzzle = [[0] * 25 for _ in range(25)]
-    solver = DPLLSolver(puzzle, timeout=1)
-    with pytest.raises(SudokuError, match="Solving timed out"):
-        solver.solve()
