@@ -1,46 +1,57 @@
-from setuptools import setup, find_packages
+import os
+import setuptools
+import re
+
+NAME = "sudoku_smt_solvers"
+AUTHOR = "Liam Davis"
+AUTHOR_EMAIL = "ljdavis27@amherst.edu"
+DESCRIPTION = "A collection of SAT and SMT solvers for solving Sudoku puzzles"
+LICENSE = "MIT"
+URL = "https://liamjdavis.github.io/sudoku-smt-solvers"
+README = "README.md"
+CLASSIFIERS = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+INSTALL_REQUIRES = [
+    "cvc5",
+    "pysat",
+    "z3-solver",
+]
+ENTRY_POINTS = {}
+SCRIPTS = []
+
+HERE = os.path.dirname(__file__)
 
 
-setup(
-    name="sudoku_smt_solvers",
-    version="0.0.0",
-    author="Liam Davis",
-    author_email="ljdavis27@amherst.edu",
-    description="A collection of SAT and SMT solvers for solving Sudoku puzzles",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
-    url="https://github.com/liamjdavis/Sudoku-SMT-Solvers/",
-    packages=find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
-    python_requires=">=3.9",
-    install_requires=[
-        "cfgv==3.4.0",
-        "coverage==7.6.8",
-        "cvc5==1.2.0",
-        "distlib==0.3.9",
-        "execnet==2.1.1",
-        "filelock==3.16.1",
-        "identify==2.6.2",
-        "iniconfig==2.0.0",
-        "mypy==1.13.0",
-        "mypy-extensions==1.0.0",
-        "nodeenv==1.9.1",
-        "packaging==24.2",
-        "platformdirs==4.3.6",
-        "pluggy==1.5.0",
-        "pre_commit==4.0.1",
-        "pytest==8.3.3",
-        "pytest-cov==6.0.0",
-        "PyYAML==6.0.2",
-        "setuptools==75.6.0",
-        "typing_extensions==4.12.2",
-        "virtualenv==20.27.1",
-        "z3-solver==4.13.3.0",
-        "python-sat==1.8.dev13",
-        "coveralls==4.0.1",
-    ],
-)
+def read(file):
+    with open(os.path.join(HERE, file), "r") as fh:
+        return fh.read()
+
+
+VERSION = re.search(
+    r'__version__ = [\'"]([^\'"]*)[\'"]', read(NAME.replace("-", "_") + "/__init__.py")
+).group(1)
+LONG_DESCRIPTION = read(README)
+
+
+if __name__ == "__main__":
+    setuptools.setup(
+        name=NAME,
+        version=VERSION,
+        packages=setuptools.find_packages(),
+        author=AUTHOR,
+        author_email=AUTHOR_EMAIL,
+        description=DESCRIPTION,
+        long_description=LONG_DESCRIPTION,
+        long_description_content_type="text/markdown",
+        license=LICENSE,
+        url=URL,
+        classifiers=CLASSIFIERS,
+        install_requires=INSTALL_REQUIRES,
+        entry_points=ENTRY_POINTS,
+        scripts=SCRIPTS,
+        include_package_data=True,
+        python_requires=">=3.9",
+    )

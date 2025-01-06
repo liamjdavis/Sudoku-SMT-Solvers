@@ -5,7 +5,7 @@ from .sudoku_error import SudokuError
 
 
 class DPLLTSolver:
-    """DPLL(T) solver combining SAT solving with Sudoku theory constraints.
+    """DPLL(T) solver combining SAT solving with theory propagation.
 
     Extends basic DPLL SAT solving with theory propagation for Sudoku rules,
     enabling more efficient pruning of the search space.
