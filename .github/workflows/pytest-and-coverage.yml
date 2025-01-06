@@ -1,4 +1,4 @@
-name: CI/CD
+name: Pytest and Coverage
 
 on:
   push:
