@@ -5,7 +5,33 @@ from .sudoku_error import SudokuError
 
 
 class CVC5Solver:
+    """CVC5-based Sudoku solver using SMT encoding.
+
+    Solves 25x25 Sudoku puzzles by encoding the problem as an SMT formula and using
+    CVC5 to find a satisfying assignment.
+
+    Attributes:
+        sudoku (List[List[int]]): Input puzzle as 25x25 grid
+        size (int): Grid size (always 25)
+        solver (Solver): CVC5 solver instance
+        variables (List[List[Term]]): SMT variables for each cell
+        propagated_clauses (int): Counter for clause assertions
+
+    Example:
+        >>> puzzle = [[0 for _ in range(25)] for _ in range(25)]  # Empty puzzle
+        >>> solver = CVC5Solver(puzzle)
+        >>> solution = solver.solve()
+    """
+
     def __init__(self, sudoku):
+        """Initialize CVC5 Sudoku solver.
+
+        Args:
+            sudoku: 25x25 grid with values 0-25 (0 for empty cells)
+
+        Raises:
+            SudokuError: If puzzle format is invalid
+        """
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
@@ -17,7 +43,6 @@ class CVC5Solver:
         self.propagated_clauses = 0
 
     def _validate_input(self, sudoku):
-        """Validate the input Sudoku grid."""
         for i, row in enumerate(sudoku):
             if not isinstance(row, list) or len(row) != 25:
                 raise SudokuError(f"Invalid Sudoku puzzle: row {i} must have 25 cells")
@@ -28,11 +53,9 @@ class CVC5Solver:
                     )
 
     def _count_assertion(self):
-        """Increment propagated clauses counter when asserting a formula"""
         self.propagated_clauses += 1
 
     def create_variables(self):
-        """Set self.variables as a 2D list containing the CVC5 variables."""
         self.solver = Solver()
 
         # Configure CVC5 solver options
@@ -48,7 +71,6 @@ class CVC5Solver:
         atexit.register(self.cleanup)
 
     def encode_rules(self):
-        """Encode the Sudoku rules into the solver."""
         # Domain constraints
         for i in range(25):
             for j in range(25):
@@ -97,7 +119,6 @@ class CVC5Solver:
                 self._count_assertion()
 
     def encode_puzzle(self):
-        """Encode the initial Sudoku puzzle into the solver."""
         for i in range(25):
             for j in range(25):
                 if self.sudoku[i][j] != 0:  # Pre-filled cell
@@ -111,7 +132,6 @@ class CVC5Solver:
                     self._count_assertion()
 
     def extract_solution(self):
-        """Extract the solution from the CVC5 model."""
         solution = [[0 for _ in range(25)] for _ in range(25)]
         for i in range(25):
             for j in range(25):
@@ -121,7 +141,6 @@ class CVC5Solver:
         return solution
 
     def cleanup(self):
-        """Clean up solver resources."""
         if self.solver:
             self.solver = None
 
@@ -158,7 +177,17 @@ class CVC5Solver:
         return True
 
     def solve(self):
-        """Solve the Sudoku puzzle."""
+        """Solve the Sudoku puzzle using CVC5.
+
+        Returns:
+            Solved 25x25 grid if satisfiable, None if unsatisfiable
+
+        Raises:
+            Exception: If solver encounters an error
+
+        Note:
+            Always cleans up solver resources, even on failure
+        """
         try:
             self.create_variables()
             self.encode_rules()
