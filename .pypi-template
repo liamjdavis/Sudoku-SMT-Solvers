@@ -14,7 +14,7 @@ package_title: sudoku-smt-solvers
 readme: README.md
 requires: ["cvc5", "z3-solver", "python-sat"]
 scripts: []
-version: 0.1.0
+version: 0.1.1
 your_author_name: Liam Davis
 your_email_address: davisliam123@gmail.com
 your_full_name: Liam Davis
