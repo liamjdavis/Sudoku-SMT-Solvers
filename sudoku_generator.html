@@ -48,7 +48,13 @@
 <li class="toctree-l1"><a class="reference internal" href="cvc5_solver.html">CVC5 Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dpll_solver.html">DPLL Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dpllt_solver.html">DPLL(T) Solver</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Sudoku Generator</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Sudoku Generator</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.SudokuGenerator"><code class="docutils literal notranslate"><span class="pre">SudokuGenerator</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.SudokuGenerator.generate"><code class="docutils literal notranslate"><span class="pre">SudokuGenerator.generate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="z3_solver.html">Z3 Solver</a></li>
 </ul>
 
@@ -76,8 +82,54 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="sudoku-generator">
-<h1>Sudoku Generator<a class="headerlink" href="#sudoku-generator" title="Link to this heading"></a></h1>
+  <section id="module-sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator">
+<span id="sudoku-generator"></span><h1>Sudoku Generator<a class="headerlink" href="#module-sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.SudokuGenerator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.</span></span><span class="sig-name descname"><span class="pre">SudokuGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">givens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">80</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">difficulty</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">puzzles_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmarks/puzzles'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solutions_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmarks/solutions'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.SudokuGenerator" title="Link to this definition"></a></dt>
+<dd><p>Generates Sudoku puzzles and their solutions using Las Vegas algorithm.</p>
+<p>This class handles the complete puzzle generation process:
+1. Generates a complete valid solution using Las Vegas algorithm
+2. Creates holes in the solution to create the actual puzzle
+3. Saves both puzzle and solution with metadata</p>
+<dl>
+<dt>Attributes:</dt><dd><p>size (int): Size of the Sudoku grid (e.g., 25 for 25x25)
+givens (int): Number of initial filled positions for Las Vegas
+timeout (int): Maximum generation attempt time in seconds
+difficulty (str): Target difficulty level for hole creation
+puzzles_dir (str): Directory for storing generated puzzles
+solutions_dir (str): Directory for storing solutions</p>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">generator</span> <span class="o">=</span> <span class="n">SudokuGenerator</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">difficulty</span><span class="o">=</span><span class="s2">&quot;Hard&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">puzzle</span><span class="p">,</span> <span class="n">solution</span><span class="p">,</span> <span class="n">puzzle_id</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.SudokuGenerator.generate">
+<span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.SudokuGenerator.generate" title="Link to this definition"></a></dt>
+<dd><p>Generate a complete Sudoku puzzle and solution pair.</p>
+<p>Uses a two-step process:
+1. Las Vegas algorithm generates a complete valid solution
+2. Hole digger creates the puzzle by removing certain cells</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>tuple: Contains:</dt><dd><ul class="simple">
+<li><p>List[List[int]]: The puzzle grid with holes</p></li>
+<li><p>List[List[int]]: The complete solution grid</p></li>
+<li><p>str: Unique identifier for the puzzle/solution pair</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+<dt>Note:</dt><dd><p>The generated puzzle is guaranteed to have a unique solution</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

@@ -44,7 +44,14 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Benchmark Runner</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Benchmark Runner</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner"><code class="docutils literal notranslate"><span class="pre">BenchmarkRunner</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner.run_benchmarks"><code class="docutils literal notranslate"><span class="pre">BenchmarkRunner.run_benchmarks()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner.run_solver"><code class="docutils literal notranslate"><span class="pre">BenchmarkRunner.run_solver()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="cvc5_solver.html">CVC5 Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dpll_solver.html">DPLL Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dpllt_solver.html">DPLL(T) Solver</a></li>
@@ -76,8 +83,61 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="benchmark-runner">
-<h1>Benchmark Runner<a class="headerlink" href="#benchmark-runner" title="Link to this heading"></a></h1>
+  <section id="module-sudoku_smt_solvers.benchmarks.benchmark_runner">
+<span id="benchmark-runner"></span><h1>Benchmark Runner<a class="headerlink" href="#module-sudoku_smt_solvers.benchmarks.benchmark_runner" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sudoku_smt_solvers.benchmarks.benchmark_runner.</span></span><span class="sig-name descname"><span class="pre">BenchmarkRunner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">puzzles_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmarks/puzzles'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'benchmarks/results'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">120</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner" title="Link to this definition"></a></dt>
+<dd><p>A benchmark runner for comparing different Sudoku solver implementations.</p>
+<p>This class manages running performance benchmarks across multiple Sudoku solvers,
+collecting metrics like solve time and propagation counts, and saving results
+to CSV files.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>puzzles_dir (str): Directory containing puzzle JSON files
+results_dir (str): Directory where benchmark results are saved
+timeout (int): Maximum time in seconds allowed for each solver attempt
+solvers (dict): Dictionary mapping solver names to solver classes</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner.run_benchmarks">
+<span class="sig-name descname"><span class="pre">run_benchmarks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner.run_benchmarks" title="Link to this definition"></a></dt>
+<dd><p>Run all solvers on all puzzles and save results.</p>
+<p>Executes benchmarks for each solver on each puzzle, collecting performance
+metrics and saving results to a timestamped CSV file.</p>
+<p>The CSV output includes:
+- Solver name
+- Puzzle unique ID
+- Solution status
+- Solve time
+- Propagation count</p>
+<p>Also calculates and stores aggregate statistics per solver:
+- Total puzzles attempted
+- Number of puzzles solved
+- Total and average solving times
+- Total and average propagation counts</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner.run_solver">
+<span class="sig-name descname"><span class="pre">run_solver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solver_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">puzzle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="headerlink" href="#sudoku_smt_solvers.benchmarks.benchmark_runner.BenchmarkRunner.run_solver" title="Link to this definition"></a></dt>
+<dd><p>Run a single solver on a puzzle and collect results with timeout.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>solver_name: Name of the solver to use
+puzzle: 2D list representing the Sudoku puzzle</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>Dict containing:</dt><dd><p>status: 'sat', 'unsat', 'timeout', or 'error'
+solve_time: Time taken in seconds
+propagations: Number of clause propagations (if available)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

@@ -47,7 +47,14 @@
 <li class="toctree-l1"><a class="reference internal" href="benchmark_runner.html">Benchmark Runner</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cvc5_solver.html">CVC5 Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dpll_solver.html">DPLL Solver</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">DPLL(T) Solver</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">DPLL(T) Solver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver"><code class="docutils literal notranslate"><span class="pre">DPLLTSolver</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver.extract_solution"><code class="docutils literal notranslate"><span class="pre">DPLLTSolver.extract_solution()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver.solve"><code class="docutils literal notranslate"><span class="pre">DPLLTSolver.solve()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="sudoku_generator.html">Sudoku Generator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="z3_solver.html">Z3 Solver</a></li>
 </ul>
@@ -76,8 +83,52 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="dpll-t-solver">
-<h1>DPLL(T) Solver<a class="headerlink" href="#dpll-t-solver" title="Link to this heading"></a></h1>
+  <section id="module-sudoku_smt_solvers.solvers.dpllt_solver">
+<span id="dpll-t-solver"></span><h1>DPLL(T) Solver<a class="headerlink" href="#module-sudoku_smt_solvers.solvers.dpllt_solver" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sudoku_smt_solvers.solvers.dpllt_solver.</span></span><span class="sig-name descname"><span class="pre">DPLLTSolver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sudoku</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver" title="Link to this definition"></a></dt>
+<dd><p>DPLL(T) solver combining SAT solving with theory propagation.</p>
+<p>Extends basic DPLL SAT solving with theory propagation for Sudoku rules,
+enabling more efficient pruning of the search space.</p>
+<dl>
+<dt>Attributes:</dt><dd><p>sudoku (List[List[int]]): Input puzzle as 25x25 grid
+size (int): Grid size (25)
+cnf (CNF): PySAT CNF formula object
+solver (Solver): PySAT Glucose3 solver
+theory_state (dict): Dynamic tracking of theory constraints
+decision_level (int): Current depth in decision tree
+propagated_clauses (int): Counter for clause additions</p>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">puzzle</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">25</span><span class="p">)]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">25</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">solver</span> <span class="o">=</span> <span class="n">DPLLTSolver</span><span class="p">(</span><span class="n">puzzle</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">solution</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver.extract_solution">
+<span class="sig-name descname"><span class="pre">extract_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver.extract_solution" title="Link to this definition"></a></dt>
+<dd><p>Convert SAT model to Sudoku grid.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver.solve">
+<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#sudoku_smt_solvers.solvers.dpllt_solver.DPLLTSolver.solve" title="Link to this definition"></a></dt>
+<dd><p>Solve Sudoku using DPLL(T) algorithm.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Solved 25x25 grid if satisfiable, None if unsatisfiable</p>
+</dd>
+<dt>Raises:</dt><dd><p>SudokuError: If solver produces invalid solution</p>
+</dd>
+<dt>Note:</dt><dd><p>Combines SAT solving with theory propagation in DPLL(T) style</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 

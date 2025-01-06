@@ -48,7 +48,13 @@
 <li class="toctree-l1"><a class="reference internal" href="dpll_solver.html">DPLL Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dpllt_solver.html">DPLL(T) Solver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sudoku_generator.html">Sudoku Generator</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Z3 Solver</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Z3 Solver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sudoku_smt_solvers.solvers.z3_solver.Z3Solver"><code class="docutils literal notranslate"><span class="pre">Z3Solver</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sudoku_smt_solvers.solvers.z3_solver.Z3Solver.solve"><code class="docutils literal notranslate"><span class="pre">Z3Solver.solve()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -75,8 +81,42 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="z3-solver">
-<h1>Z3 Solver<a class="headerlink" href="#z3-solver" title="Link to this heading"></a></h1>
+  <section id="module-sudoku_smt_solvers.solvers.z3_solver">
+<span id="z3-solver"></span><h1>Z3 Solver<a class="headerlink" href="#module-sudoku_smt_solvers.solvers.z3_solver" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.solvers.z3_solver.Z3Solver">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sudoku_smt_solvers.solvers.z3_solver.</span></span><span class="sig-name descname"><span class="pre">Z3Solver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sudoku</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sudoku_smt_solvers.solvers.z3_solver.Z3Solver" title="Link to this definition"></a></dt>
+<dd><p>Z3-based SMT solver for Sudoku puzzles.</p>
+<p>Uses integer variables and distinct constraints to encode Sudoku rules.
+Tracks constraint propagation for performance analysis.</p>
+<dl>
+<dt>Attributes:</dt><dd><p>sudoku (List[List[int]]): Input puzzle as 25x25 grid
+size (int): Grid size (25)
+solver (z3.Solver): Z3 solver instance
+variables (List[List[z3.Int]]): SMT variables for grid
+propagated_clauses (int): Counter for constraint additions</p>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">puzzle</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">25</span><span class="p">)]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">25</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">solver</span> <span class="o">=</span> <span class="n">Z3Solver</span><span class="p">(</span><span class="n">puzzle</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">solution</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sudoku_smt_solvers.solvers.z3_solver.Z3Solver.solve">
+<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sudoku_smt_solvers.solvers.z3_solver.Z3Solver.solve" title="Link to this definition"></a></dt>
+<dd><p>Solve Sudoku using Z3 SMT solver.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Solved 25x25 grid if satisfiable, None if unsatisfiable</p>
+</dd>
+<dt>Note:</dt><dd><p>Validates solution before returning to ensure correctness</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
