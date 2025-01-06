@@ -8,12 +8,32 @@ from ..solvers import CVC5Solver, DPLLSolver, DPLLTSolver, Z3Solver
 
 
 class BenchmarkRunner:
+    """A benchmark runner for comparing different Sudoku solver implementations.
+
+    This class manages running performance benchmarks across multiple Sudoku solvers,
+    collecting metrics like solve time and propagation counts, and saving results
+    to CSV files.
+
+    Attributes:
+        puzzles_dir (str): Directory containing puzzle JSON files
+        results_dir (str): Directory where benchmark results are saved
+        timeout (int): Maximum time in seconds allowed for each solver attempt
+        solvers (dict): Dictionary mapping solver names to solver classes
+    """
+
     def __init__(
         self,
         puzzles_dir: str = "benchmarks/puzzles",
         results_dir: str = "benchmarks/results",
         timeout: int = 120,
     ):
+        """Initialize the benchmark runner.
+
+        Args:
+            puzzles_dir: Directory containing puzzle JSON files
+            results_dir: Directory where benchmark results will be saved
+            timeout: Maximum time in seconds allowed for each solver attempt
+        """
         self.puzzles_dir = puzzles_dir
         self.results_dir = results_dir
         self.timeout = timeout
@@ -26,7 +46,6 @@ class BenchmarkRunner:
         os.makedirs(results_dir, exist_ok=True)
 
     def load_puzzle(self, puzzle_id: str) -> Optional[List[List[int]]]:
-        """Load a puzzle from the puzzles directory."""
         puzzle_path = os.path.join(self.puzzles_dir, f"{puzzle_id}.json")
         try:
             with open(puzzle_path, "r") as f:
@@ -43,14 +62,24 @@ class BenchmarkRunner:
             return None
 
     def _solve_with_timeout(self, solver_class, puzzle, queue):
-        """Helper function to run in separate process"""
         solver = solver_class(puzzle)
         result = solver.solve()
         # Pack both the result and propagation count
         queue.put((result, getattr(solver, "propagated_clauses", 0)))
 
     def run_solver(self, solver_name: str, puzzle: List[List[int]]) -> Dict:
-        """Run a single solver on a puzzle and collect results with timeout."""
+        """Run a single solver on a puzzle and collect results with timeout.
+
+        Args:
+            solver_name: Name of the solver to use
+            puzzle: 2D list representing the Sudoku puzzle
+
+        Returns:
+            Dict containing:
+                status: 'sat', 'unsat', 'timeout', or 'error'
+                solve_time: Time taken in seconds
+                propagations: Number of clause propagations (if available)
+        """
         solver_class = self.solvers[solver_name]
 
         # Create queue for getting results
@@ -85,7 +114,24 @@ class BenchmarkRunner:
             return {"status": "error", "solve_time": solve_time, "propagations": 0}
 
     def run_benchmarks(self) -> None:
-        """Run all solvers on all puzzles and save results."""
+        """Run all solvers on all puzzles and save results.
+
+        Executes benchmarks for each solver on each puzzle, collecting performance
+        metrics and saving results to a timestamped CSV file.
+
+        The CSV output includes:
+        - Solver name
+        - Puzzle identifier
+        - Solution status
+        - Solve time
+        - Propagation count
+
+        Also calculates and stores aggregate statistics per solver:
+        - Total puzzles attempted
+        - Number of puzzles solved
+        - Total and average solving times
+        - Total and average propagation counts
+        """
         results = {
             solver_name: {
                 "puzzles": {},

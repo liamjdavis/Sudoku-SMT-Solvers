@@ -5,7 +5,33 @@ from .sudoku_error import SudokuError
 
 
 class DPLLSolver:
+    """DPLL-based Sudoku solver using SAT encoding.
+
+    Solves 25x25 Sudoku puzzles by converting them to CNF (Conjunctive Normal Form)
+    and using the DPLL algorithm to find a satisfying assignment.
+
+    Attributes:
+        sudoku (List[List[int]]): Input puzzle as 25x25 grid
+        size (int): Grid size (25)
+        cnf (CNF): PySAT CNF formula object
+        solver (Solver): PySAT Glucose3 solver instance
+        propagated_clauses (int): Counter for clause additions
+
+    Example:
+        >>> puzzle = [[0 for _ in range(25)] for _ in range(25)]
+        >>> solver = DPLLSolver(puzzle)
+        >>> solution = solver.solve()
+    """
+
     def __init__(self, sudoku: List[List[int]]) -> None:
+        """Initialize DPLL Sudoku solver.
+
+        Args:
+            sudoku: 25x25 grid with values 0-25 (0 for empty cells)
+
+        Raises:
+            SudokuError: If puzzle format is invalid
+        """
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
@@ -16,16 +42,13 @@ class DPLLSolver:
         self.propagated_clauses = 0  # Add clause counter
 
     def _count_clause(self) -> None:
-        """Increment propagated clauses counter when adding a clause"""
         self.propagated_clauses += 1
 
     def add_sudoku_clauses(self) -> None:
-        """Add Sudoku constraints as CNF clauses."""
         size = self.size
         block_size = int(size**0.5)
 
         def get_var(row, col, num):
-            """Map (row, col, num) to a unique variable."""
             return row * size * size + col * size + num
 
         # At least one number in each cell
@@ -80,7 +103,6 @@ class DPLLSolver:
                     self._count_clause()
 
     def extract_solution(self, model: List[int]) -> List[List[int]]:
-        """Convert SAT model to Sudoku grid."""
         solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
         for var in model:
             if var > 0:  # Only consider positive assignments
@@ -92,10 +114,6 @@ class DPLLSolver:
         return solution
 
     def validate_solution(self, solution: List[List[int]]) -> bool:
-        """
-        Validate the Sudoku solution.
-        Ensures all rows, columns, and blocks contain unique numbers from 1 to size.
-        """
         size = self.size
         block_size = int(size**0.5)
 
@@ -124,7 +142,18 @@ class DPLLSolver:
         return True
 
     def solve(self) -> Optional[List[List[int]]]:
-        """Solve the Sudoku puzzle using DPLL."""
+        """Solve Sudoku puzzle using DPLL SAT solver.
+
+        Returns:
+            Solved 25x25 grid if satisfiable, None if unsatisfiable
+
+        Raises:
+            SudokuError: If solver produces invalid solution
+            Exception: For other solver errors
+
+        Note:
+            Uses Glucose3 SAT solver from PySAT
+        """
         self.add_sudoku_clauses()
         self.solver.append_formula(self.cnf.clauses)
 

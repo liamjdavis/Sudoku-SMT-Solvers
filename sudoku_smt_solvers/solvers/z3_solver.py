@@ -3,7 +3,33 @@ from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
 
 
 class Z3Solver:
+    """Z3-based SMT solver for Sudoku puzzles.
+
+    Uses integer variables and distinct constraints to encode Sudoku rules.
+    Tracks constraint propagation for performance analysis.
+
+    Attributes:
+        sudoku (List[List[int]]): Input puzzle as 25x25 grid
+        size (int): Grid size (25)
+        solver (z3.Solver): Z3 solver instance
+        variables (List[List[z3.Int]]): SMT variables for grid cells
+        propagated_clauses (int): Counter for constraint additions
+
+    Example:
+        >>> puzzle = [[0 for _ in range(25)] for _ in range(25)]
+        >>> solver = Z3Solver(puzzle)
+        >>> solution = solver.solve()
+    """
+
     def __init__(self, sudoku):
+        """Initialize Z3 Sudoku solver.
+
+        Args:
+            sudoku: 25x25 grid with values 0-25 (0 for empty cells)
+
+        Raises:
+            SudokuError: If puzzle format is invalid
+        """
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
@@ -14,20 +40,14 @@ class Z3Solver:
         self.propagated_clauses = 0
 
     def create_variables(self):
-        """
-        Set self.variables as a 3D list containing the Z3 variables.
-        self.variables[i][j] is an integer variable representing the value in cell (i, j).
-        """
         self.variables = [
             [Int(f"x_{i}_{j}") for j in range(self.size)] for i in range(self.size)
         ]
 
     def _count_clause(self):
-        """Increment propagated clauses counter when adding a constraint"""
         self.propagated_clauses += 1
 
     def encode_rules(self):
-        """Encode Sudoku rules using Int variables and Distinct"""
         # Cell range constraints
         cell_constraints = []
         for i in range(self.size):
@@ -70,7 +90,6 @@ class Z3Solver:
             self._count_clause()
 
     def encode_puzzle(self):
-        """Encode initial values directly"""
         initial_values = []
         for i in range(self.size):
             for j in range(self.size):
@@ -80,19 +99,12 @@ class Z3Solver:
         self.solver.add(initial_values)
 
     def extract_solution(self, model):
-        """
-        Extract solution from model.
-        """
         return [
             [model.evaluate(self.variables[i][j]).as_long() for j in range(self.size)]
             for i in range(self.size)
         ]
 
     def validate_solution(self, solution):
-        """
-        Validate if the solution meets Sudoku rules.
-        Returns True if valid, False otherwise.
-        """
         # Check range
         for row in solution:
             if not all(1 <= num <= 25 for num in row):
@@ -123,8 +135,13 @@ class Z3Solver:
         return True
 
     def solve(self):
-        """
-        Solve the Sudoku puzzle.
+        """Solve Sudoku using Z3 SMT solver.
+
+        Returns:
+            Solved 25x25 grid if satisfiable, None if unsatisfiable
+
+        Note:
+            Validates solution before returning to ensure correctness
         """
         self.solver = Solver()
         self.create_variables()

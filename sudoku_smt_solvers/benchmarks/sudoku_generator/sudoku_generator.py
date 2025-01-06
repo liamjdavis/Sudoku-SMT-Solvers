@@ -9,6 +9,26 @@ from .hole_digger import HoleDigger
 
 
 class SudokuGenerator:
+    """Generates Sudoku puzzles and their solutions using Las Vegas algorithm.
+
+    This class handles the complete puzzle generation process:
+    1. Generates a complete valid solution using Las Vegas algorithm
+    2. Creates holes in the solution to create the actual puzzle
+    3. Saves both puzzle and solution with metadata
+
+    Attributes:
+        size (int): Size of the Sudoku grid (e.g., 25 for 25x25)
+        givens (int): Number of initial filled positions for Las Vegas
+        timeout (int): Maximum generation attempt time in seconds
+        difficulty (str): Target difficulty level for hole creation
+        puzzles_dir (str): Directory for storing generated puzzles
+        solutions_dir (str): Directory for storing solutions
+
+    Example:
+        >>> generator = SudokuGenerator(size=9, difficulty="Hard")
+        >>> puzzle, solution, puzzle_id = generator.generate()
+    """
+
     def __init__(
         self,
         size: int = 25,
@@ -40,13 +60,20 @@ class SudokuGenerator:
         os.makedirs(solutions_dir, exist_ok=True)
 
     def generate(self) -> Tuple[List[List[int]], List[List[int]], str]:
-        """Generate a Sudoku puzzle and its solution.
+        """Generate a complete Sudoku puzzle and solution pair.
+
+        Uses a two-step process:
+        1. Las Vegas algorithm generates a complete valid solution
+        2. Hole digger creates the puzzle by removing numbers
 
         Returns:
-            Tuple containing:
-            - The puzzle (with holes)
-            - The complete solution
-            - The unique identifier for the puzzle/solution pair
+            tuple: Contains:
+                - List[List[int]]: The puzzle grid with holes
+                - List[List[int]]: The complete solution grid
+                - str: Unique identifier for the puzzle/solution pair
+
+        Note:
+            The generated puzzle is guaranteed to have a unique solution
         """
         # Step 1: Generate complete solution using Las Vegas
         generator = LasVegasGenerator(self.size, self.givens, self.timeout)
@@ -66,18 +93,10 @@ class SudokuGenerator:
         return puzzle, solution, puzzle_id
 
     def _generate_puzzle_id(self) -> str:
-        """Generate a unique identifier for a puzzle."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"sudoku_{self.size}x{self.size}_{self.difficulty}_{timestamp}"
 
     def _save_grid(self, grid: List[List[int]], puzzle_id: str, is_puzzle: bool):
-        """Save a grid (puzzle or solution) to file.
-
-        Args:
-            grid: The grid to save
-            puzzle_id: Unique identifier for the puzzle
-            is_puzzle: True if saving puzzle, False if saving solution
-        """
         directory = self.puzzles_dir if is_puzzle else self.solutions_dir
         filename = f"{puzzle_id}_{'puzzle' if is_puzzle else 'solution'}.json"
         filepath = os.path.join(directory, filename)
@@ -92,18 +111,3 @@ class SudokuGenerator:
 
         with open(filepath, "w") as f:
             json.dump(metadata, f, indent=2)
-
-
-if __name__ == "__main__":
-    generator = SudokuGenerator(
-        difficulty="Evil", puzzles_dir="puzzles", solutions_dir="solutions"
-    )
-    puzzle, solution, puzzle_id = generator.generate()
-
-    print(f"Generated puzzle {puzzle_id}")
-    print("Puzzle:")
-    for row in puzzle:
-        print(row)
-    print("\nSolution:")
-    for row in solution:
-        print(row)

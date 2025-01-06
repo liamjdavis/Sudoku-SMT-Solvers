@@ -5,7 +5,35 @@ from .sudoku_error import SudokuError
 
 
 class DPLLTSolver:
+    """DPLL(T) solver combining SAT solving with Sudoku theory constraints.
+
+    Extends basic DPLL SAT solving with theory propagation for Sudoku rules,
+    enabling more efficient pruning of the search space.
+
+    Attributes:
+        sudoku (List[List[int]]): Input puzzle as 25x25 grid
+        size (int): Grid size (25)
+        cnf (CNF): PySAT CNF formula object
+        solver (Solver): PySAT Glucose3 solver instance
+        theory_state (dict): Dynamic tracking of theory constraints
+        decision_level (int): Current depth in decision tree
+        propagated_clauses (int): Counter for clause additions
+
+    Example:
+        >>> puzzle = [[0 for _ in range(25)] for _ in range(25)]
+        >>> solver = DPLLTSolver(puzzle)
+        >>> solution = solver.solve()
+    """
+
     def __init__(self, sudoku: List[List[int]]) -> None:
+        """Initialize DPLL(T) solver with theory support.
+
+        Args:
+            sudoku: 25x25 grid with values 0-25 (0 for empty cells)
+
+        Raises:
+            SudokuError: If puzzle format is invalid
+        """
         if not sudoku or not isinstance(sudoku, list) or len(sudoku) != 25:
             raise SudokuError("Invalid Sudoku puzzle: must be a 25x25 grid")
 
@@ -18,16 +46,13 @@ class DPLLTSolver:
         self.propagated_clauses = 0
 
     def _count_clause(self) -> None:
-        """Increment propagated clauses counter when adding a clause"""
         self.propagated_clauses += 1
 
     def add_sudoku_clauses(self) -> None:
-        """Add Sudoku constraints as CNF clauses."""
         size = self.size
         block_size = int(size**0.5)
 
         def get_var(row, col, num):
-            """Map (row, col, num) to a unique variable."""
             return row * size * size + col * size + num
 
         # At least one number in each cell
@@ -82,10 +107,6 @@ class DPLLTSolver:
                     self._count_clause()
 
     def theory_propagation(self) -> Optional[List[int]]:
-        """
-        Theory propagation: Enforce Sudoku-specific rules dynamically.
-        Returns a conflict clause if a theory conflict is detected.
-        """
         block_size = int(self.size**0.5)
 
         def block_index(row, col):
@@ -127,10 +148,6 @@ class DPLLTSolver:
         return solution
 
     def validate_solution(self, solution: List[List[int]]) -> bool:
-        """
-        Validate the Sudoku solution.
-        Ensures all rows, columns, and blocks contain unique numbers from 1 to size.
-        """
         size = self.size
         block_size = int(size**0.5)
 
@@ -159,6 +176,17 @@ class DPLLTSolver:
         return True
 
     def solve(self) -> Optional[List[List[int]]]:
+        """Solve Sudoku using DPLL(T) algorithm.
+
+        Returns:
+            Solved 25x25 grid if satisfiable, None if unsatisfiable
+
+        Raises:
+            SudokuError: If solver produces invalid solution
+
+        Note:
+            Combines SAT solving with theory propagation in DPLL(T) style
+        """
         """Solve the Sudoku puzzle using DPLL(T)."""
         self.add_sudoku_clauses()
         self.solver.append_formula(self.cnf.clauses)
