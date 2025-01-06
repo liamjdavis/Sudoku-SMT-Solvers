@@ -1,0 +1,21 @@
+a_description_for_the_package: This package is for solving 25x25 Sudoku with SAT and SMT solvers.
+classifiers:
+- 'Programming Language :: Python'
+console_scripts: []
+first_year_of_publication: '2025'
+github_account: liamjdavis
+github_repo_name: Sudoku-SMT-Solvers
+keywords_describing_the_package: SMT, SAT, Sudoku
+license: MIT
+package_module_name: sudoku-smt-solvers
+package_name: sudoku-smt-solvers
+package_tagline: Collection of SAT and SMT solvers for Sudoku.
+package_title: sudoku-smt-solvers
+readme: README.md
+requires: ["cvc5", "z3-solver", "python-sat"]
+scripts: []
+version: 0.1.0
+your_author_name: Liam Davis
+your_email_address: davisliam123@gmail.com
+your_full_name: Liam Davis
+your_name: Liam Davis
