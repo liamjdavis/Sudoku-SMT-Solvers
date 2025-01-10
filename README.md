@@ -3,7 +3,7 @@
 [![Pytest + CI/CD](https://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/test.yml/badge.svg)](ttps://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/liamjdavis/Sudoku-SMT-Solvers/badge.svg)](https://coveralls.io/github/liamjdavis/Sudoku-SMT-Solvers)
 [![Docs Build Deployment](https://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/docs.yml/badge.svg)](https://github.com/liamjdavis/Sudoku-SMT-Solvers/actions/workflows/docs.yml)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://liamjdavis.github.io/sudoku-smt-solvers)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://liamjdavis.github.io/Sudoku-SMT-Solvers)
 
 
 ## About
