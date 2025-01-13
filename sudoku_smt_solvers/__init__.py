@@ -15,3 +15,5 @@ from .solvers.z3_solver import Z3Solver
 from .solvers.cvc5_solver import CVC5Solver
 from .benchmarks.benchmark_runner import BenchmarkRunner
 from .benchmarks.sudoku_generator.sudoku_generator import SudokuGenerator
+
+__version__ = "0.1.1"
