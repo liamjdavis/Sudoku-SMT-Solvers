@@ -1,6 +1,6 @@
 [run]
 # Define the source directory for measuring coverage
-source = solvers, benchmarks
+source = sudoku_smt_solvers
 
 [report]
 # Fail if coverage is below 90%

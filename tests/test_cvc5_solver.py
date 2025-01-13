@@ -1,8 +1,8 @@
 import pytest
 import os
 import json
-from solvers.cvc5_solver import CVC5Solver
-from solvers.utils.sudoku_error import SudokuError
+from sudoku_smt_solvers.solvers.cvc5_solver import CVC5Solver
+from sudoku_smt_solvers.solvers.utils.sudoku_error import SudokuError
 
 
 @pytest.fixture

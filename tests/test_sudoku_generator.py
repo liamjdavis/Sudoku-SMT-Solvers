@@ -3,7 +3,7 @@ import os
 import json
 from datetime import datetime
 from unittest.mock import Mock, patch
-from benchmarks.sudoku_generator.sudoku_generator import (
+from sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator import (
     SudokuGenerator,
 )
 
@@ -11,7 +11,9 @@ from benchmarks.sudoku_generator.sudoku_generator import (
 # Add these new fixtures
 @pytest.fixture
 def mock_hole_digger():
-    with patch("benchmarks.sudoku_generator.sudoku_generator.HoleDigger") as mock:
+    with patch(
+        "sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.HoleDigger"
+    ) as mock:
         mock_instance = Mock()
         mock_instance.dig_holes.return_value = [
             [1, 0],
@@ -24,7 +26,7 @@ def mock_hole_digger():
 @pytest.fixture
 def mock_las_vegas():
     with patch(
-        "benchmarks.sudoku_generator.sudoku_generator.LasVegasGenerator"
+        "sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.LasVegasGenerator"
     ) as mock:
         yield mock
 
@@ -38,7 +40,9 @@ def temp_dirs(tmp_path):
 
 @pytest.fixture
 def mock_datetime():
-    with patch("benchmarks.sudoku_generator.sudoku_generator.datetime") as mock:
+    with patch(
+        "sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator.datetime"
+    ) as mock:
         mock.now.return_value = datetime(2024, 1, 1, 12, 0, 0)
         yield mock
 

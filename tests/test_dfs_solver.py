@@ -1,6 +1,6 @@
 # test_dfs_solver.py
 import pytest
-from benchmarks.sudoku_generator.dfs_solver import DFSSolver
+from sudoku_smt_solvers.benchmarks.sudoku_generator.dfs_solver import DFSSolver
 
 
 @pytest.fixture

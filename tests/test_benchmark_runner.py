@@ -3,7 +3,7 @@ import json
 import pytest
 from unittest.mock import Mock, patch, MagicMock, mock_open
 
-from benchmarks.benchmark_runner import BenchmarkRunner
+from sudoku_smt_solvers.benchmarks.benchmark_runner import BenchmarkRunner
 
 
 @pytest.fixture
