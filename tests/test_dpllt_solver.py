@@ -1,8 +1,8 @@
 import pytest
 import json
 import os
-from sudoku_smt_solvers.solvers.dpllt_solver import DPLLTSolver
-from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
+from solvers.dpllt_solver import DPLLTSolver
+from solvers.utils.sudoku_error import SudokuError
 
 
 @pytest.fixture

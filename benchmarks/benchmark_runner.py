@@ -4,7 +4,7 @@ import time
 import multiprocessing
 from typing import Dict, List, Optional
 
-from ..solvers import CVC5Solver, DPLLSolver, DPLLTSolver, Z3Solver
+from solvers import CVC5Solver, DPLLSolver, DPLLTSolver, Z3Solver
 
 
 class BenchmarkRunner:

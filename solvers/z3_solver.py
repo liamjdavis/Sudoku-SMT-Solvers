@@ -1,5 +1,5 @@
 from z3 import Solver, Int, Distinct, sat
-from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
+from .utils.sudoku_error import SudokuError
 
 
 class Z3Solver:

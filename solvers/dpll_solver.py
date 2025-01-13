@@ -1,32 +1,30 @@
 from typing import List, Optional
 from pysat.solvers import Solver
 from pysat.formula import CNF
-from .sudoku_error import SudokuError
+from .utils.sudoku_error import SudokuError
 
 
-class DPLLTSolver:
-    """DPLL(T) solver combining SAT solving with theory propagation.
+class DPLLSolver:
+    """DPLL-based Sudoku solver using SAT encoding.
 
-    Extends basic DPLL SAT solving with theory propagation for Sudoku rules,
-    enabling more efficient pruning of the search space.
+    Solves 25x25 Sudoku puzzles by converting them to CNF (Conjunctive Normal Form)
+    and using DPLL to find a satisfying assignment.
 
     Attributes:
         sudoku (List[List[int]]): Input puzzle as 25x25 grid
         size (int): Grid size (25)
         cnf (CNF): PySAT CNF formula object
-        solver (Solver): PySAT Glucose3 solver
-        theory_state (dict): Dynamic tracking of theory constraints
-        decision_level (int): Current depth in decision tree
+        solver (Solver): PySAT Glucose3 solver instance
         propagated_clauses (int): Counter for clause additions
 
     Example:
         >>> puzzle = [[0 for _ in range(25)] for _ in range(25)]
-        >>> solver = DPLLTSolver(puzzle)
+        >>> solver = DPLLSolver(puzzle)
         >>> solution = solver.solve()
     """
 
     def __init__(self, sudoku: List[List[int]]) -> None:
-        """Initialize DPLL(T) solver with theory support.
+        """Initialize DPLL Sudoku solver.
 
         Args:
             sudoku: 25x25 grid with values 0-25 (0 for empty cells)
@@ -41,9 +39,7 @@ class DPLLTSolver:
         self.size = 25
         self.cnf = CNF()  # CNF object to store Boolean clauses
         self.solver = Solver(name="glucose3")  # Low-level SAT solver
-        self.theory_state = {}  # Store theory constraints dynamically
-        self.decision_level = 0
-        self.propagated_clauses = 0
+        self.propagated_clauses = 0  # Add clause counter
 
     def _count_clause(self) -> None:
         self.propagated_clauses += 1
@@ -106,37 +102,7 @@ class DPLLTSolver:
                     self.cnf.append([get_var(row, col, num)])
                     self._count_clause()
 
-    def theory_propagation(self) -> Optional[List[int]]:
-        block_size = int(self.size**0.5)
-
-        def block_index(row, col):
-            return (row // block_size) * block_size + (col // block_size)
-
-        # Track constraints dynamically
-        for row in range(self.size):
-            for col in range(self.size):
-                if self.sudoku[row][col] != 0:
-                    num = self.sudoku[row][col]
-                    # Check row, column, and block constraints
-                    if num in self.theory_state.get((row, "row"), set()):
-                        return [-self.get_var(row, col, num)]
-                    if num in self.theory_state.get((col, "col"), set()):
-                        return [-self.get_var(row, col, num)]
-                    if num in self.theory_state.get(
-                        (block_index(row, col), "block"), set()
-                    ):
-                        return [-self.get_var(row, col, num)]
-
-                    # Add constraints to theory state
-                    self.theory_state.setdefault((row, "row"), set()).add(num)
-                    self.theory_state.setdefault((col, "col"), set()).add(num)
-                    self.theory_state.setdefault(
-                        (block_index(row, col), "block"), set()
-                    ).add(num)
-        return None
-
     def extract_solution(self, model: List[int]) -> List[List[int]]:
-        """Convert SAT model to Sudoku grid."""
         solution = [[0 for _ in range(self.size)] for _ in range(self.size)]
         for var in model:
             if var > 0:  # Only consider positive assignments
@@ -176,36 +142,34 @@ class DPLLTSolver:
         return True
 
     def solve(self) -> Optional[List[List[int]]]:
-        """Solve Sudoku using DPLL(T) algorithm.
+        """Solve Sudoku puzzle using DPLL SAT solver.
 
         Returns:
             Solved 25x25 grid if satisfiable, None if unsatisfiable
 
         Raises:
             SudokuError: If solver produces invalid solution
+            Exception: For other solver errors
 
         Note:
-            Combines SAT solving with theory propagation in DPLL(T) style
+            Uses Glucose3 SAT solver from PySAT
         """
-        """Solve the Sudoku puzzle using DPLL(T)."""
         self.add_sudoku_clauses()
         self.solver.append_formula(self.cnf.clauses)
 
-        while self.solver.solve():
-            # Perform theory propagation
-            conflict_clause = self.theory_propagation()
-            if conflict_clause:
-                # Add conflict clause and continue solving
-                self.solver.add_clause(conflict_clause)
-                self._count_clause()
-            else:
+        try:
+            if self.solver.solve():
                 # Extract and validate the solution
                 model = self.solver.get_model()
                 solution = self.extract_solution(model)
+
                 if self.validate_solution(solution):
                     return solution
                 else:
                     raise SudokuError("Invalid solution generated.")
+            else:
+                # If unsat, return None
+                return None
 
-        # If UNSAT, return None
-        return None
+        except Exception as e:
+            raise

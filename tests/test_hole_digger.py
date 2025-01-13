@@ -1,5 +1,5 @@
 import pytest
-from sudoku_smt_solvers.benchmarks.sudoku_generator.hole_digger import (
+from benchmarks.sudoku_generator.hole_digger import (
     HoleDigger,
     difficulty_givensRange_mapping,
 )
@@ -26,11 +26,11 @@ mock_difficulty_lower_bound_mapping = {
 @pytest.fixture(autouse=True)
 def mock_mappings(monkeypatch):
     monkeypatch.setattr(
-        "sudoku_smt_solvers.benchmarks.sudoku_generator.hole_digger.difficulty_givensRange_mapping",
+        "benchmarks.sudoku_generator.hole_digger.difficulty_givensRange_mapping",
         mock_difficulty_givensRange_mapping,
     )
     monkeypatch.setattr(
-        "sudoku_smt_solvers.benchmarks.sudoku_generator.hole_digger.difficulty_lower_bound_mapping",
+        "benchmarks.sudoku_generator.hole_digger.difficulty_lower_bound_mapping",
         mock_difficulty_lower_bound_mapping,
     )
 

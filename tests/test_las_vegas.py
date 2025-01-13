@@ -1,5 +1,5 @@
 import pytest
-from sudoku_smt_solvers.benchmarks.sudoku_generator.las_vegas import (
+from benchmarks.sudoku_generator.las_vegas import (
     LasVegasGenerator,
     print_grid,
     solve_with_timeout,
@@ -95,14 +95,14 @@ def test_generate_small_puzzle(small_generator):
             assert len(box_numbers) == len(set(box_numbers))
 
 
-@patch("sudoku_smt_solvers.benchmarks.sudoku_generator.las_vegas.Process")
+@patch("benchmarks.sudoku_generator.las_vegas.Process")
 def test_generate_with_timeout(mock_process, generator):
     mock_process.return_value.is_alive.return_value = False
     mock_queue = MagicMock()
     mock_queue.get_nowait.return_value = ([[1, 2, 3]], 0.1)
 
     with patch(
-        "sudoku_smt_solvers.benchmarks.sudoku_generator.las_vegas.Queue",
+        "benchmarks.sudoku_generator.las_vegas.Queue",
         return_value=mock_queue,
     ):
         result = generator.generate()

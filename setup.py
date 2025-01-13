@@ -3,8 +3,8 @@ import setuptools
 import re
 
 NAME = "sudoku_smt_solvers"
-AUTHOR = "Liam Davis"
-AUTHOR_EMAIL = "ljdavis27@amherst.edu"
+AUTHOR = "Liam Davis, Tairan 'Ryan' Ji"
+AUTHOR_EMAIL = "ljdavis27@amherst.edu, tji26@amherst.edu"
 DESCRIPTION = "A collection of SAT and SMT solvers for solving Sudoku puzzles"
 LICENSE = "MIT"
 URL = "https://liamjdavis.github.io/sudoku-smt-solvers"

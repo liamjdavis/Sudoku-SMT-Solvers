@@ -1,7 +1,7 @@
 from typing import List, Optional
 import atexit
 from cvc5 import Kind, Solver
-from .sudoku_error import SudokuError
+from .utils.sudoku_error import SudokuError
 
 
 class CVC5Solver:

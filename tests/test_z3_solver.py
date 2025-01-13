@@ -1,8 +1,8 @@
 import pytest
 import json
 import os
-from sudoku_smt_solvers.solvers.z3_solver import Z3Solver
-from sudoku_smt_solvers.solvers.sudoku_error import SudokuError
+from solvers.z3_solver import Z3Solver
+from solvers.utils.sudoku_error import SudokuError
 
 
 @pytest.fixture
