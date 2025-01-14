@@ -67,7 +67,6 @@ from sudoku_smt_solvers import BenchmarkRunner
 
 runner = BenchmarkRunner(
     puzzles_dir='resources/benchmarks/puzzles/',
-    solutions_dir='resources/benchmarks/solutions/',
     results_dir='results/'
 )
 runner.run_benchmarks()
