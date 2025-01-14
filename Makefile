@@ -7,8 +7,8 @@ NC=\033[0m
 
 # test envs
 
-PYTHON_VERSIONS ?= 3.13.0
-RUFF_PYTHON_VERSION ?= py313
+PYTHON_VERSIONS ?= 3.12.0
+RUFF_PYTHON_VERSION ?= py312
 
 PROJECT=$(shell basename $(CURDIR))
 PACKAGE_NAME=`cat .pypi-template | grep "^package_module_name" | cut -d":" -f2 | xargs`

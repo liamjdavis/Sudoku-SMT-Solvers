@@ -9,11 +9,27 @@ Key Components:
 - Benchmarking suite for comparing solver performance
 """
 
-from .solvers.dpll_solver import DPLLSolver
-from .solvers.dpllt_solver import DPLLTSolver
-from .solvers.z3_solver import Z3Solver
-from .solvers.cvc5_solver import CVC5Solver
-from .benchmarks.benchmark_runner import BenchmarkRunner
-from .benchmarks.sudoku_generator.sudoku_generator import SudokuGenerator
+from .solvers import CVC5Solver, DPLLSolver, DPLLTSolver, Z3Solver
+from .solvers.utils import SudokuError
+from .benchmarks import BenchmarkRunner
+from .benchmarks.sudoku_generator import (
+    SudokuGenerator,
+    LasVegasGenerator,
+    HoleDigger,
+    DFSSolver,
+)
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
+
+__all__ = [
+    "CVC5Solver",
+    "DPLLSolver",
+    "DPLLTSolver",
+    "Z3Solver",
+    "BenchmarkRunner",
+    "SudokuGenerator",
+    "LasVegasGenerator",
+    "HoleDigger",
+    "DFSSolver",
+    "SudokuError",
+]

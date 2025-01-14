@@ -33,7 +33,7 @@ This package includes the DPLL solver and three modern SMT solvers:
 To run any of the solvers on a 25x25 Sudoku puzzle, you can create an instance of the solver class and call the solve method in a file at the root (Sudoku-smt-solvers). Here is an example using Z3:
 
 ```python
-from sudoku_smt_solvers.solvers.z3_solver import Z3Solver
+from sudoku_smt_solvers import Z3Solver
 
 # Example grid (25x25)
 grid = [[0] * 25 for _ in range(25)]
@@ -50,7 +50,7 @@ else:
 This package also includes a generator for creating Sudoku puzzles to be used as benchmarks. To generate a puzzle, create an instance of the `SudokuGenerator` class and call the `generate` method. Here is an example:
 
 ```python
-from sudoku_smt_solvers.benchmarks.sudoku_generator.sudoku_generator import SudokuGenerator
+from sudoku_smt_solvers import SudokuGenerator
 
 generator = SudokuGenerator(size = 25, givens = 80, timeout = 5, difficulty = "Medium", puzzles_dir = "benchmarks/puzzles", solutions_dir = "benchmarks/solutions")
 
@@ -63,7 +63,7 @@ Due to the computational complexity of generating large sudoku puzzles, it is re
 To run the benchmarks you created on all four solvers, create an instance of the `BenchmarkRunner` class and call the `run_benchmarks` method. Here is an example:
 
 ```python
-from sudoku_smt_solvers.benchmarks.benchmark_runner import BenchmarkRunner
+from sudoku_smt_solvers import BenchmarkRunner
 
 runner = BenchmarkRunner(
     puzzles_dir='resources/benchmarks/puzzles/',
