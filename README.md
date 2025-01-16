@@ -7,7 +7,7 @@
 
 
 ## About
-This repository contains the code for the study "Evaluating SMT-Based Solvers on Sudoku". Created by Liam Davis (@liamjdavis) and Tairan "Ryan" Ji (@TairanJ) as their for COSC-241 Artificial Intelligence at Amherst College, it evaluates the efficacy of SMT-Based Solvers by benchmarking three modern SMT solvers (DPLL(T), Z3, and CVC5) against the DPLL algorithm on a collection of 100 25x25 Sudoku puzzles of varying difficulty.
+This repository contains the code for the study "Evaluating SMT-Based Solvers on Sudoku". Created by Liam Davis (@liamjdavis) and Tairan "Ryan" Ji (@TairanJ) as their for COSC-241 Artificial Intelligence at Amherst College, it evaluates the efficacy of SMT-Based Solvers by benchmarking three modern SMT solvers (DPLL(T), Z3, and CVC5) against the DPLL algorithm on a collection of 100 25x25 Sudoku puzzles of varying difficulty. The corresponding paper can be found [here](https://arxiv.org/abs/2501.08569).
 
 Along with the study, we also published `sudoku-smt-solvers`, a Python package that provides the various SMT-based Sudoku solvers and benchmarking tools we built for this study. The package features DPLL(T), Z3, and CVC5 solvers optimized for 25x25 Sudoku puzzles, a puzzle generator for creating test cases, and a comprehensive benchmarking suite. Available through pip, it offers a simple API for solving Sudoku puzzles using state-of-the-art SMT solvers while facilitating performance comparisons between different solving approaches.
 
